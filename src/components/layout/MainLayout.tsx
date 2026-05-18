@@ -147,7 +147,7 @@ const headerIcons = {
 };
 
 const THEME_OPTIONS: Array<{
-  key: Exclude<Theme, 'light'>;
+  key: Theme;
   labelKey: string;
   icon: ReactNode;
 }> = [

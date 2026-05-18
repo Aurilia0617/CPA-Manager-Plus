@@ -10,7 +10,6 @@ import { STORAGE_KEY_THEME } from '@/utils/constants';
 
 type ResolvedTheme = 'light' | 'dark';
 type AppliedTheme = ResolvedTheme | 'white';
-type SelectableTheme = Exclude<Theme, 'light'>;
 
 interface ThemeState {
   theme: Theme;
@@ -35,19 +34,18 @@ const normalizeResolvedTheme = (theme: AppliedTheme): ResolvedTheme => {
   return theme === 'dark' ? 'dark' : 'light';
 };
 
-const normalizeTheme = (theme: Theme): SelectableTheme => {
-  return theme === 'light' ? 'white' : theme;
+const isTheme = (theme: unknown): theme is Theme => {
+  return theme === 'auto' || theme === 'white' || theme === 'dark';
 };
 
 const resolveTheme = (theme: Theme): AppliedTheme => {
-  const normalizedTheme = normalizeTheme(theme);
-  if (normalizedTheme === 'auto') {
+  if (theme === 'auto') {
     return resolveAutoTheme();
   }
-  if (normalizedTheme === 'white') {
+  if (theme === 'white') {
     return 'white';
   }
-  return normalizedTheme;
+  return theme;
 };
 
 const applyTheme = (resolved: AppliedTheme) => {
@@ -71,19 +69,18 @@ export const useThemeStore = create<ThemeState>()(
       resolvedTheme: 'light',
 
       setTheme: (theme) => {
-        const normalizedTheme = normalizeTheme(theme);
-        const resolved = resolveTheme(normalizedTheme);
+        const resolved = resolveTheme(theme);
         applyTheme(resolved);
         set({
-          theme: normalizedTheme,
+          theme,
           resolvedTheme: normalizeResolvedTheme(resolved),
         });
       },
 
       cycleTheme: () => {
         const { theme, setTheme } = get();
-        const order: SelectableTheme[] = ['auto', 'white', 'dark'];
-        const currentIndex = order.indexOf(normalizeTheme(theme));
+        const order: Theme[] = ['auto', 'white', 'dark'];
+        const currentIndex = order.indexOf(theme);
         const nextTheme = order[(currentIndex + 1) % order.length];
         setTheme(nextTheme);
       },
@@ -92,7 +89,7 @@ export const useThemeStore = create<ThemeState>()(
         const { theme, setTheme } = get();
 
         // 应用已保存的主题
-        setTheme(theme);
+        setTheme(isTheme(theme) ? theme : 'auto');
 
         // 监听系统主题变化（仅在 auto 模式下生效）
         if (!window.matchMedia) {
