@@ -143,6 +143,7 @@
     "auth_files": "Auth Files",
     "oauth": "OAuth Login",
     "quota_management": "Quota Management",
+    "codex_inspection": "Codex Account Inspection",
     "monitoring_center": "Request Monitoring",
     "config_management": "Config Panel",
     "logs": "Logs Viewer",
@@ -1320,7 +1321,7 @@
     "codex_inspection_eyebrow": "Codex Account Inspection",
     "codex_inspection_title": "Codex Account Inspection",
     "codex_inspection_desc": "Inspect Codex accounts independently for quota exhaustion, invalid accounts, and disabled recovery. Delete, disable, and enable actions are executed only after confirmation.",
-    "codex_inspection_back": "Back to Request Monitoring",
+    "codex_inspection_back": "Back to Auth Files",
     "codex_inspection_run": "Start Inspection",
     "codex_inspection_running": "Inspecting...",
     "codex_inspection_pause": "Pause",
@@ -1986,19 +1987,16 @@
   },
   "language": {
     "switch": "Language",
-    "chinese": "中文",
-    "chinese_tw": "Traditional Chinese (Taiwan)",
+    "chinese": "简体中文",
+    "chinese_tw": "繁體中文",
     "english": "English",
     "russian": "Русский"
   },
   "theme": {
     "switch": "Theme",
-    "light": "Wool Paper",
-    "white": "Pure White",
+    "white": "Light",
     "dark": "Dark",
-    "switch_to_light": "Switch to wool paper mode",
-    "switch_to_dark": "Switch to dark mode",
-    "auto": "Follow system"
+    "auto": "Auto"
   },
   "sidebar": {
     "toggle_expand": "Expand sidebar",

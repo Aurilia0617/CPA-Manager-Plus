@@ -141,6 +141,7 @@
     "auth_files": "Файлы аутентификации",
     "oauth": "OAuth вход",
     "quota_management": "Управление квотами",
+    "codex_inspection": "Проверка аккаунтов Codex",
     "monitoring_center": "Мониторинг запросов",
     "config_management": "Панель конфигурации",
     "logs": "Просмотр логов",
@@ -1315,7 +1316,7 @@
     "codex_inspection_eyebrow": "Codex Account Inspection",
     "codex_inspection_title": "Проверка аккаунтов Codex",
     "codex_inspection_desc": "Отдельно проверяет квоты Codex, невалидные аккаунты и восстановление отключённых аккаунтов. Удаление, отключение и включение выполняются только после подтверждения пользователя.",
-    "codex_inspection_back": "Назад к мониторингу запросов",
+    "codex_inspection_back": "Назад к файлам аутентификации",
     "codex_inspection_run": "Запустить проверку",
     "codex_inspection_running": "Проверка...",
     "codex_inspection_pause": "Пауза",
@@ -1981,19 +1982,16 @@
   },
   "language": {
     "switch": "Язык",
-    "chinese": "中文",
-    "chinese_tw": "繁體中文（台灣）",
+    "chinese": "简体中文",
+    "chinese_tw": "繁體中文",
     "english": "English",
     "russian": "Русский"
   },
   "theme": {
     "switch": "Тема",
-    "light": "Шерстяная бумага",
-    "white": "Чисто-белая",
+    "white": "Светлая",
     "dark": "Тёмная",
-    "switch_to_light": "Переключиться на тему «Шерстяная бумага»",
-    "switch_to_dark": "Переключиться на тёмную тему",
-    "auto": "Следовать системе"
+    "auto": "Авто"
   },
   "sidebar": {
     "toggle_expand": "Развернуть боковую панель",

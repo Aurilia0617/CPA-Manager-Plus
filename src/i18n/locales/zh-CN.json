@@ -143,6 +143,7 @@
     "auth_files": "认证文件",
     "oauth": "OAuth 登录",
     "quota_management": "配额管理",
+    "codex_inspection": "Codex 账号巡检",
     "monitoring_center": "请求监控",
     "config_management": "配置面板",
     "logs": "日志查看",
@@ -1320,7 +1321,7 @@
     "codex_inspection_eyebrow": "Codex Account Inspection",
     "codex_inspection_title": "Codex 账号巡检",
     "codex_inspection_desc": "独立检查 Codex 账号的额度、失效状态和禁用状态，仅在用户确认后才执行删除、禁用或启用动作。",
-    "codex_inspection_back": "返回请求监控",
+    "codex_inspection_back": "返回认证文件",
     "codex_inspection_run": "开始巡检",
     "codex_inspection_running": "巡检中...",
     "codex_inspection_pause": "暂停",
@@ -1986,19 +1987,16 @@
   },
   "language": {
     "switch": "语言",
-    "chinese": "中文",
-    "chinese_tw": "繁體中文（台灣）",
+    "chinese": "简体中文",
+    "chinese_tw": "繁體中文",
     "english": "English",
     "russian": "Русский"
   },
   "theme": {
     "switch": "主题",
-    "light": "羊毛纸",
-    "white": "纯白",
-    "dark": "暗色",
-    "switch_to_light": "切换到羊毛纸模式",
-    "switch_to_dark": "切换到暗色模式",
-    "auto": "跟随系统"
+    "white": "明亮",
+    "dark": "黑夜",
+    "auto": "自动"
   },
   "sidebar": {
     "toggle_expand": "展开侧边栏",

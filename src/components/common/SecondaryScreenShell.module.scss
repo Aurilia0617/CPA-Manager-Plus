@@ -16,8 +16,12 @@
   align-items: center;
   gap: $spacing-md;
   padding: $spacing-sm $spacing-md;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  box-shadow: var(--app-shadow-soft);
+  backdrop-filter: blur(var(--app-blur));
+  -webkit-backdrop-filter: blur(var(--app-blur));
   min-height: 44px;
 }
 
@@ -108,10 +112,10 @@
   border-radius: 999px;
   --glass-blur: 12px;
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-backdrop-filter);
-  -webkit-backdrop-filter: var(--glass-backdrop-filter);
+  backdrop-filter: blur(var(--app-blur));
+  -webkit-backdrop-filter: blur(var(--app-blur));
   border: 1px solid var(--glass-border);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--glass-shadow);
 }
 
 :global([data-theme='dark']) {

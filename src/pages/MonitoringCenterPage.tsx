@@ -2842,11 +2842,6 @@ export function MonitoringCenterPage() {
       ) : null}
 
       <div className={styles.headerShell}>
-        <div className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>{t('monitoring.title')}</h1>
-          <p className={styles.description}>{t('monitoring.console_subtitle')}</p>
-        </div>
-
         <div className={styles.statusBar}>
           <span className={`${styles.statusBadge} ${styles[`tone${connectionTone}`]}`}>
             <span className={styles.statusDot} aria-hidden="true" />
@@ -2928,7 +2923,7 @@ export function MonitoringCenterPage() {
 
         <div className={`${styles.actionGroup} ${styles.actionGroupNav}`}>
           <Link
-            to="/monitoring/codex-inspection"
+            to="/codex-inspection"
             className={`${styles.actionButton} ${styles.quickNavLink}`}
           >
             <IconChartLine size={16} />

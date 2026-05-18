@@ -486,6 +486,19 @@ export function IconSidebarUsage({ size = 20, ...props }: IconProps) {
   );
 }
 
+export function IconSidebarInspection({ size = 20, ...props }: IconProps) {
+  return (
+    <svg {...sidebarSvgProps} width={size} height={size} {...props}>
+      <circle cx="12" cy="12" r="7.2" fill="currentColor" fillOpacity="0.08" />
+      <circle cx="12" cy="12" r="2.6" />
+      <path d="M12 3v3" />
+      <path d="M12 18v3" />
+      <path d="M3 12h3" />
+      <path d="M18 12h3" />
+    </svg>
+  );
+}
+
 export function IconSidebarMonitor({ size = 20, ...props }: IconProps) {
   return (
     <svg {...sidebarSvgProps} width={size} height={size} {...props}>

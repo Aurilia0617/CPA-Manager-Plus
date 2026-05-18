@@ -10,6 +10,7 @@ import { STORAGE_KEY_THEME } from '@/utils/constants';
 
 type ResolvedTheme = 'light' | 'dark';
 type AppliedTheme = ResolvedTheme | 'white';
+type SelectableTheme = Exclude<Theme, 'light'>;
 
 interface ThemeState {
   theme: Theme;
@@ -34,14 +35,19 @@ const normalizeResolvedTheme = (theme: AppliedTheme): ResolvedTheme => {
   return theme === 'dark' ? 'dark' : 'light';
 };
 
+const normalizeTheme = (theme: Theme): SelectableTheme => {
+  return theme === 'light' ? 'white' : theme;
+};
+
 const resolveTheme = (theme: Theme): AppliedTheme => {
-  if (theme === 'auto') {
+  const normalizedTheme = normalizeTheme(theme);
+  if (normalizedTheme === 'auto') {
     return resolveAutoTheme();
   }
-  if (theme === 'white') {
+  if (normalizedTheme === 'white') {
     return 'white';
   }
-  return theme;
+  return normalizedTheme;
 };
 
 const applyTheme = (resolved: AppliedTheme) => {
@@ -65,18 +71,19 @@ export const useThemeStore = create<ThemeState>()(
       resolvedTheme: 'light',
 
       setTheme: (theme) => {
-        const resolved = resolveTheme(theme);
+        const normalizedTheme = normalizeTheme(theme);
+        const resolved = resolveTheme(normalizedTheme);
         applyTheme(resolved);
         set({
-          theme,
+          theme: normalizedTheme,
           resolvedTheme: normalizeResolvedTheme(resolved),
         });
       },
 
       cycleTheme: () => {
         const { theme, setTheme } = get();
-        const order: Theme[] = ['light', 'white', 'dark', 'auto'];
-        const currentIndex = order.indexOf(theme);
+        const order: SelectableTheme[] = ['auto', 'white', 'dark'];
+        const currentIndex = order.indexOf(normalizeTheme(theme));
         const nextTheme = order[(currentIndex + 1) % order.length];
         setTheme(nextTheme);
       },

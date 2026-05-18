@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Outlet, RouterProvider, createHashRouter } from 'react-router-dom';
 import { LoginPage } from '@/pages/LoginPage';
+import { AppBackground } from '@/components/common/AppBackground';
 import { NotificationContainer } from '@/components/common/NotificationContainer';
 import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -10,9 +11,12 @@ import { useLanguageStore, useThemeStore } from '@/stores';
 function RootShell() {
   return (
     <>
-      <NotificationContainer />
-      <ConfirmationModal />
-      <Outlet />
+      <AppBackground />
+      <div className="app-content">
+        <NotificationContainer />
+        <ConfirmationModal />
+        <Outlet />
+      </div>
     </>
   );
 }

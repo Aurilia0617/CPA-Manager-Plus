@@ -4,7 +4,7 @@
 .container {
   min-height: 100vh;
   display: flex;
-  background: var(--bg-secondary);
+  background: transparent;
 }
 
 // 左侧品牌展示区
@@ -14,7 +14,12 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: #000000;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
+    var(--glass-bg-secondary);
+  border-right: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--app-blur));
+  -webkit-backdrop-filter: blur(var(--app-blur));
   padding: $spacing-2xl;
   position: relative;
   overflow: hidden;
@@ -53,11 +58,12 @@
 .brandWord {
   font-size: 14vw;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.9);
-  letter-spacing: -0.02em;
+  color: var(--app-text-primary);
+  letter-spacing: 0;
   line-height: 0.85;
   text-transform: uppercase;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   text-align: right;
   padding-right: 0;
   opacity: 0;
@@ -88,7 +94,7 @@
   justify-content: center;
   align-items: center;
   padding: $spacing-2xl;
-  background: var(--bg-secondary);
+  background: transparent;
   position: relative;
 
   @media (max-width: $breakpoint-mobile) {
@@ -114,31 +120,33 @@
 
 // Logo
 .logo {
-  width: 80px;
-  height: 80px;
-  border-radius: $radius-lg;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
   object-fit: cover;
-  box-shadow: var(--shadow-lg);
-  border: 3px solid var(--border-color);
+  box-shadow: 0 10px 25px rgba(10, 126, 220, 0.24);
+  border: 1px solid var(--glass-border);
 }
 
 // 登录表单卡片
 .loginCard {
   width: 100%;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: $radius-lg;
-  box-shadow: var(--shadow-lg);
-  padding: $spacing-xl;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--app-blur));
+  -webkit-backdrop-filter: blur(var(--app-blur));
+  padding: 40px 35px;
   display: flex;
   flex-direction: column;
   gap: $spacing-lg;
 
   @media (max-width: $breakpoint-mobile) {
     padding: $spacing-lg;
-    box-shadow: none;
-    border: none;
-    background: transparent;
+    box-shadow: var(--glass-shadow);
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
   }
 }
 
@@ -146,18 +154,19 @@
   position: relative;
   gap: 18px;
   padding: 26px 28px 28px;
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--bg-primary) 96%, transparent);
-  box-shadow:
-    0 28px 70px -44px rgba(15, 23, 42, 0.42),
-    var(--shadow-lg);
+  border-radius: var(--app-radius-lg);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--app-blur));
+  -webkit-backdrop-filter: blur(var(--app-blur));
 
   @media (max-width: $breakpoint-mobile) {
     padding: $spacing-lg;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--glass-border);
     border-radius: 18px;
-    background: var(--bg-primary);
-    box-shadow: var(--shadow-lg);
+    background: var(--glass-bg);
+    box-shadow: var(--glass-shadow);
   }
 }
 
@@ -216,7 +225,7 @@
   height: 58px;
   object-fit: cover;
   border-radius: 14px;
-  box-shadow: 0 18px 34px -28px color-mix(in srgb, var(--primary-color) 90%, transparent);
+  box-shadow: 0 10px 25px rgba(10, 126, 220, 0.24);
 }
 
 // 登录头部
@@ -257,9 +266,9 @@
 
 // 连接信息框
 .connectionBox {
-  background: var(--bg-secondary);
-  border: 1px dashed var(--border-color);
-  border-radius: $radius-md;
+  background: var(--app-surface-muted);
+  border: 1px dashed var(--app-border-strong);
+  border-radius: var(--app-radius-md);
   padding: $spacing-md;
   display: flex;
   flex-direction: column;
@@ -288,9 +297,9 @@
   gap: 14px;
   padding: 16px 18px;
   border-style: solid;
-  border-color: color-mix(in srgb, var(--primary-color) 24%, var(--border-color));
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--primary-color) 4%, var(--bg-primary));
+  border-color: color-mix(in srgb, var(--primary-color) 24%, var(--app-border));
+  border-radius: var(--app-radius-md);
+  background: color-mix(in srgb, var(--primary-color) 4%, var(--glass-bg));
 
   .value {
     font-size: 18px;
@@ -311,7 +320,7 @@
   height: 30px;
   margin-top: 2px;
   border-radius: 50%;
-  background: var(--primary-color);
+  background: var(--primary-gradient);
   color: var(--primary-contrast, #fff);
 }
 
@@ -357,7 +366,7 @@
     right: calc(-50% + 24px);
     height: 2px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--primary-color) 16%, var(--border-color));
+    background: color-mix(in srgb, var(--primary-color) 16%, var(--app-border));
   }
 }
 
@@ -368,9 +377,9 @@
   z-index: 1;
   width: 32px;
   height: 32px;
-  border: 2px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+  border: 2px solid color-mix(in srgb, var(--app-border) 88%, transparent);
   border-radius: 50%;
-  background: var(--bg-primary);
+  background: var(--app-surface-strong);
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 700;
@@ -392,7 +401,7 @@
 
   .stepIndex {
     border-color: var(--primary-color);
-    background: var(--primary-color);
+    background: var(--primary-gradient);
     color: #ffffff;
   }
 }
@@ -402,7 +411,7 @@
 
   .stepIndex {
     border-color: var(--primary-color);
-    background: var(--bg-primary);
+    background: var(--app-surface-strong);
     color: var(--primary-color);
   }
 
@@ -417,9 +426,9 @@
   gap: 20px;
   min-height: 310px;
   padding: 22px 28px;
-  border: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--bg-primary) 80%, var(--bg-secondary));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--app-radius-md);
+  background: var(--glass-bg-secondary);
 
   @media (max-width: $breakpoint-mobile) {
     min-height: 0;
@@ -475,8 +484,8 @@
 
   :global(.input) {
     min-height: 48px;
-    border-radius: 12px;
-    background: var(--bg-primary);
+    border-radius: var(--app-radius-sm);
+    background: var(--app-input-bg);
     font-size: 16px;
   }
 
@@ -492,9 +501,9 @@
   flex-direction: column;
   gap: 12px;
   padding: 20px 22px;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 28%, var(--border-color));
-  border-radius: 14px;
-  background: var(--bg-primary);
+  border: 1px solid color-mix(in srgb, var(--primary-color) 28%, var(--app-border));
+  border-radius: var(--app-radius-md);
+  background: var(--app-surface-muted);
 
   p {
     margin: 0;
@@ -508,18 +517,18 @@
   display: grid;
   gap: 16px;
   padding: 20px 22px;
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  background: var(--bg-primary);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-surface-muted);
 }
 
 .reviewGrid {
   display: grid;
   gap: 0;
   overflow: hidden;
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  background: var(--bg-primary);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-surface-muted);
 
   > div {
     display: grid;
@@ -530,7 +539,7 @@
     padding: 12px 16px;
 
     &:not(:last-child) {
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--app-border);
     }
 
     @media (max-width: $breakpoint-mobile) {
@@ -554,7 +563,7 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: color-mix(in srgb, var(--primary-color) 12%, var(--bg-secondary));
+    background: var(--app-accent-soft);
     color: var(--primary-color);
   }
 
@@ -584,7 +593,7 @@
 
 .setupBackButton {
   color: var(--text-secondary) !important;
-  background: var(--bg-primary) !important;
+  background: var(--app-surface-muted) !important;
 }
 
 .setupNextButton {
@@ -675,7 +684,7 @@
   height: 80px;
   width: auto;
   border-radius: $radius-lg;
-  box-shadow: $shadow-lg;
+  box-shadow: var(--glass-shadow);
   animation: splashLogoPulse 1.5s ease-in-out infinite;
 }
 
@@ -711,7 +720,7 @@
 .splashLoaderBar {
   width: 100%;
   height: 100%;
-  background: var(--primary-color);
+  background: var(--primary-gradient);
   border-radius: $radius-full;
   animation: splashLoading 1.2s ease-in-out infinite;
 }
