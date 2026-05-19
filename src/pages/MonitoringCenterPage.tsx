@@ -2002,29 +2002,25 @@ export function MonitoringCenterPage() {
   }, [customDraftEndMs, customDraftStartMs, t]);
 
   const {
-    usage,
     loading: usageLoading,
     error: usageError,
-    lastRefreshedAt,
     modelPrices,
     apiKeyAliases,
-    usageServiceAvailable,
     setModelPrices,
     loadApiKeyAliases,
     syncModelPrices,
     exportUsage,
     importUsage,
-    loadUsage,
-  } = useUsageData();
+  } = useUsageData({ loadUsageEvents: false });
 
   const {
     loading: monitoringLoading,
     error: monitoringError,
     authFiles,
     filteredRows,
+    lastRefreshedAt: monitoringLastRefreshedAt,
     refreshMeta,
   } = useMonitoringData({
-    usage,
     config,
     modelPrices,
     apiKeyAliases,
@@ -2035,8 +2031,8 @@ export function MonitoringCenterPage() {
   });
 
   const refreshAll = useCallback(async () => {
-    await Promise.all([loadUsage(), loadApiKeyAliases(), refreshMeta(false)]);
-  }, [loadApiKeyAliases, loadUsage, refreshMeta]);
+    await Promise.all([loadApiKeyAliases(), refreshMeta(false)]);
+  }, [loadApiKeyAliases, refreshMeta]);
 
   const setCurrentAccountPage = useCallback(
     (page: number) => {
@@ -2062,6 +2058,7 @@ export function MonitoringCenterPage() {
 
   const monitoringUnavailable =
     !requestMonitoringAvailability.checking && !requestMonitoringAvailability.available;
+  const usageTransferAvailable = requestMonitoringAvailability.available;
   const monitoringUnavailableTitle =
     requestMonitoringAvailability.reason === 'monitoring_disabled'
       ? t('monitoring.request_monitoring_disabled_title')
@@ -2233,7 +2230,7 @@ export function MonitoringCenterPage() {
     () => scopedRows.filter((row) => row.statsIncluded),
     [scopedRows]
   );
-  const accountStatusNowMs = lastRefreshedAt?.getTime() ?? Date.now();
+  const accountStatusNowMs = monitoringLastRefreshedAt?.getTime() ?? Date.now();
   const accountStatusBounds = useMemo(
     () => getRangeBounds(timeRange, accountStatusNowMs, customTimeRange),
     [accountStatusNowMs, customTimeRange, timeRange]
@@ -2975,12 +2972,12 @@ export function MonitoringCenterPage() {
   );
 
   const handleUsageImportClick = useCallback(() => {
-    if (!usageServiceAvailable) {
+    if (!requestMonitoringAvailability.available) {
       showNotification(t('usage_stats.import_export_requires_usage_service'), 'warning');
       return;
     }
     usageImportInputRef.current?.click();
-  }, [showNotification, t, usageServiceAvailable]);
+  }, [requestMonitoringAvailability.available, showNotification, t]);
 
   const handleUsageImportChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -3015,7 +3012,7 @@ export function MonitoringCenterPage() {
 
   return (
     <div className={styles.page}>
-      {overallLoading && !usage ? (
+      {overallLoading && filteredRows.length === 0 ? (
         <div className={styles.loadingOverlay} aria-busy="true">
           <div className={styles.loadingOverlayContent}>
             <LoadingSpinner size={28} />
@@ -3033,7 +3030,9 @@ export function MonitoringCenterPage() {
           <div className={styles.statusMeta}>
             <span>
               {t('monitoring.last_sync')}:{' '}
-              {lastRefreshedAt ? lastRefreshedAt.toLocaleTimeString(i18n.language) : '--'}
+              {monitoringLastRefreshedAt
+                ? monitoringLastRefreshedAt.toLocaleTimeString(i18n.language)
+                : '--'}
             </span>
             <span className={scopedFailureCount > 0 ? styles.statusMetaWarn : undefined}>
               {`${t('monitoring.recent_failures')}: ${scopedFailureCount}`}
@@ -3063,9 +3062,9 @@ export function MonitoringCenterPage() {
             type="button"
             className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
             onClick={() => void handleUsageExport()}
-            disabled={!usageServiceAvailable || usageExporting || usageImporting}
+            disabled={!usageTransferAvailable || usageExporting || usageImporting}
             title={
-              usageServiceAvailable
+              usageTransferAvailable
                 ? t('usage_stats.export')
                 : t('usage_stats.import_export_requires_usage_service')
             }
@@ -3077,9 +3076,9 @@ export function MonitoringCenterPage() {
             type="button"
             className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
             onClick={handleUsageImportClick}
-            disabled={!usageServiceAvailable || usageExporting || usageImporting}
+            disabled={!usageTransferAvailable || usageExporting || usageImporting}
             title={
-              usageServiceAvailable
+              usageTransferAvailable
                 ? t('usage_stats.import')
                 : t('usage_stats.import_export_requires_usage_service')
             }

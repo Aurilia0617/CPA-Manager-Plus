@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { authFilesApi } from '@/services/api/authFiles';
 import { apiClient } from '@/services/api/client';
-import type { ApiKeyAlias } from '@/services/api/usageService';
+import type { ApiKeyAlias, MonitoringAnalyticsEventRow } from '@/services/api/usageService';
 import type { AuthFileItem } from '@/types/authFile';
 import type { Config } from '@/types/config';
 import type { CredentialInfo } from '@/types/sourceInfo';
@@ -17,6 +17,7 @@ import {
   type ModelPrice,
   type UsageDetailWithEndpoint,
 } from '@/utils/usage';
+import { useMonitoringAnalytics } from './useMonitoringAnalytics';
 
 type RecordLike = Record<string, unknown>;
 
@@ -512,7 +513,7 @@ export type MonitoringMetadata = {
 };
 
 export interface UseMonitoringDataParams {
-  usage: unknown;
+  usage?: unknown;
   config: Config | null | undefined;
   modelPrices: Record<string, ModelPrice>;
   apiKeyAliases?: ApiKeyAlias[];
@@ -540,6 +541,7 @@ export interface UseMonitoringDataReturn {
   taskBuckets: MonitoringTaskBucketRow[];
   recentFailures: MonitoringFailureRow[];
   filteredRows: MonitoringEventRow[];
+  lastRefreshedAt: Date | null;
   refreshMeta: (showLoading?: boolean) => Promise<void>;
 }
 
@@ -1618,6 +1620,33 @@ const buildFailureRows = (rows: MonitoringEventRow[]) =>
     .sort((left, right) => right.timestampMs - left.timestampMs)
     .slice(0, 8);
 
+const buildUsageDetailsFromAnalyticsEvents = (
+  items: MonitoringAnalyticsEventRow[] = []
+): UsageDetailWithEndpoint[] =>
+  items.map((item) => ({
+    timestamp: new Date(item.timestamp_ms).toISOString(),
+    source: readString(item.source),
+    auth_index: item.auth_index || null,
+    api_key_hash: readString(item.api_key_hash),
+    account_snapshot: readString(item.account_snapshot),
+    auth_label_snapshot: readString(item.auth_label_snapshot),
+    auth_provider_snapshot: readString(item.auth_provider_snapshot),
+    latency_ms: item.latency_ms ?? undefined,
+    tokens: {
+      input_tokens: item.input_tokens,
+      output_tokens: item.output_tokens,
+      reasoning_tokens: item.reasoning_tokens,
+      cached_tokens: item.cached_tokens,
+      total_tokens: item.total_tokens,
+    },
+    failed: item.failed === true,
+    __modelName: item.model,
+    __endpoint: item.endpoint || `${item.method} ${item.path}`.trim(),
+    __endpointMethod: item.method,
+    __endpointPath: item.path,
+    __timestampMs: item.timestamp_ms,
+  }));
+
 const buildEventRows = (
   details: UsageDetailWithEndpoint[],
   authMetaMap: Map<string, MonitoringAuthMeta>,
@@ -1811,6 +1840,29 @@ export function useMonitoringData({
   const [channels, setChannels] = useState<MonitoringChannelMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [analyticsNowMs, setAnalyticsNowMs] = useState(() => Date.now());
+
+  const analyticsBounds = useMemo(() => {
+    const bounds = getRangeBounds(timeRange, analyticsNowMs, customTimeRange);
+    if (!bounds) return null;
+    return {
+      startMs: Number.isFinite(bounds.startMs) && bounds.startMs > 0 ? bounds.startMs : 1,
+      endMs: Math.max(bounds.endMs, 1),
+    };
+  }, [analyticsNowMs, customTimeRange, timeRange]);
+
+  const analytics = useMonitoringAnalytics({
+    fromMs: analyticsBounds?.startMs,
+    toMs: analyticsBounds?.endMs,
+    nowMs: analyticsNowMs,
+    searchQuery,
+    searchApiKeyHash,
+    include: {
+      summary: true,
+      events_page: { limit: 50000 },
+    },
+    throttleMs: 1_000,
+  });
 
   const refreshMeta = useCallback(
     async (showLoading: boolean = true) => {
@@ -1824,6 +1876,7 @@ export function useMonitoringData({
       setChannels(payload.channels);
       setError(payload.error);
       setLoading(false);
+      setAnalyticsNowMs(Date.now());
     },
     [config]
   );
@@ -1899,7 +1952,9 @@ export function useMonitoringData({
   }, [apiKeyAliases, config?.apiKeys]);
 
   const allRows = useMemo(() => {
-    const details = collectUsageDetailsWithEndpoint(usage);
+    const details = analytics.data
+      ? buildUsageDetailsFromAnalyticsEvents(analytics.data.events?.items ?? [])
+      : collectUsageDetailsWithEndpoint(usage);
     return buildEventRows(
       details,
       authMetaMap,
@@ -1914,6 +1969,7 @@ export function useMonitoringData({
     authFileMap,
     authMetaMap,
     channelByAuthIndex,
+    analytics.data,
     modelPrices,
     sourceInfoMap,
     usage,
@@ -1961,8 +2017,8 @@ export function useMonitoringData({
   const statusChips = useMemo(() => buildStatusChips(metadata), [metadata]);
 
   return {
-    loading,
-    error,
+    loading: loading || analytics.loading,
+    error: [error, analytics.error].filter(Boolean).join('；'),
     authFiles,
     channels,
     summary,
@@ -1978,6 +2034,7 @@ export function useMonitoringData({
     taskBuckets,
     recentFailures,
     filteredRows,
+    lastRefreshedAt: analytics.lastRefreshedAt,
     refreshMeta,
   };
 }
