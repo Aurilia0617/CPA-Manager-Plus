@@ -7,6 +7,7 @@ import (
 	"github.com/seakee/cpa-manager-plus/usage-service/internal/config"
 	apikeyaliassvc "github.com/seakee/cpa-manager-plus/usage-service/internal/service/apikeyalias"
 	collectorsvc "github.com/seakee/cpa-manager-plus/usage-service/internal/service/collector"
+	dashboardsvc "github.com/seakee/cpa-manager-plus/usage-service/internal/service/dashboard"
 	managerconfigsvc "github.com/seakee/cpa-manager-plus/usage-service/internal/service/managerconfig"
 	modelpricesvc "github.com/seakee/cpa-manager-plus/usage-service/internal/service/modelprice"
 	panelsvc "github.com/seakee/cpa-manager-plus/usage-service/internal/service/panel"
@@ -28,6 +29,7 @@ type Context struct {
 	ManagerConfigService *managerconfigsvc.Service
 	CollectorService     *collectorsvc.Service
 	UsageService         *usagesvc.Service
+	DashboardService     *dashboardsvc.Service
 	ModelPriceService    *modelpricesvc.Service
 	APIKeyAliasService   *apikeyaliassvc.Service
 	ProxyService         *proxysvc.Service
@@ -55,6 +57,7 @@ func FromExisting(
 		ManagerConfigService: managerConfigService,
 		CollectorService:     collectorService,
 		UsageService:         usagesvc.New(st),
+		DashboardService:     dashboardsvc.New(st),
 		ModelPriceService:    modelpricesvc.New(st, modelPriceSyncURL),
 		APIKeyAliasService:   apikeyaliassvc.New(st),
 		ProxyService:         proxysvc.New(managerConfigService),

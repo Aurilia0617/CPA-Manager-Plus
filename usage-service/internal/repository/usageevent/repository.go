@@ -13,6 +13,10 @@ type Repository interface {
 	ListRecent(ctx context.Context, limit int) ([]model.UsageEvent, error)
 	Count(ctx context.Context) (int64, error)
 	ExportJSONL(ctx context.Context) ([]byte, error)
+	AggregateBetween(ctx context.Context, fromMs, toMs int64) (Aggregate, error)
+	TopModelsBetween(ctx context.Context, fromMs, toMs int64, limit int) ([]ModelStat, error)
+	ModelStatsBetween(ctx context.Context, fromMs, toMs int64) ([]ModelStat, error)
+	RecentFailuresBetween(ctx context.Context, fromMs, toMs int64, limit int) ([]RecentFailure, error)
 }
 
 type repository struct {

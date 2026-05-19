@@ -6,6 +6,7 @@ import (
 
 	"github.com/seakee/cpa-manager-plus/usage-service/internal/app"
 	apikeyaliascontroller "github.com/seakee/cpa-manager-plus/usage-service/internal/http/controller/apikeyalias"
+	dashboardcontroller "github.com/seakee/cpa-manager-plus/usage-service/internal/http/controller/dashboard"
 	healthcontroller "github.com/seakee/cpa-manager-plus/usage-service/internal/http/controller/health"
 	managerconfigcontroller "github.com/seakee/cpa-manager-plus/usage-service/internal/http/controller/managerconfig"
 	modelpricecontroller "github.com/seakee/cpa-manager-plus/usage-service/internal/http/controller/modelprice"
@@ -26,6 +27,7 @@ func New(appCtx *app.Context) http.Handler {
 	usageHandler := &usagecontroller.Handler{App: appCtx}
 	modelPriceHandler := &modelpricecontroller.Handler{App: appCtx}
 	apiKeyAliasHandler := &apikeyaliascontroller.Handler{App: appCtx}
+	dashboardHandler := &dashboardcontroller.Handler{App: appCtx}
 	proxyHandler := &proxycontroller.Handler{App: appCtx}
 	panelHandler := &panelcontroller.Handler{App: appCtx}
 
@@ -36,7 +38,7 @@ func New(appCtx *app.Context) http.Handler {
 	mux.HandleFunc("/usage-service/config", middleware.WithCORS(appCtx.Config, managerConfigHandler.Handle))
 	mux.HandleFunc("/setup", middleware.WithCORS(appCtx.Config, setupHandler.Setup))
 	mux.HandleFunc("/management.html", panelHandler.ManagementHTML)
-	mux.HandleFunc("/", rootHandler(appCtx, usageHandler, modelPriceHandler, apiKeyAliasHandler, proxyHandler))
+	mux.HandleFunc("/", rootHandler(appCtx, usageHandler, modelPriceHandler, apiKeyAliasHandler, dashboardHandler, proxyHandler))
 
 	return middleware.Recovery(middleware.RequestLogger(mux))
 }
@@ -46,6 +48,7 @@ func rootHandler(
 	usageHandler *usagecontroller.Handler,
 	modelPriceHandler *modelpricecontroller.Handler,
 	apiKeyAliasHandler *apikeyaliascontroller.Handler,
+	dashboardHandler *dashboardcontroller.Handler,
 	proxyHandler *proxycontroller.Handler,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +63,10 @@ func rootHandler(
 		}
 		if strings.HasPrefix(r.URL.Path, "/v0/management/api-key-aliases") {
 			middleware.WithCORS(appCtx.Config, apiKeyAliasHandler.Handle)(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/v0/management/dashboard/") {
+			middleware.WithCORS(appCtx.Config, dashboardHandler.Handle)(w, r)
 			return
 		}
 		cleanUsagePath := strings.TrimRight(r.URL.Path, "/")

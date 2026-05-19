@@ -24,6 +24,11 @@ type ModelPrice = model.ModelPrice
 type ModelPriceSyncResult = model.ModelPriceSyncResult
 type APIKeyAlias = model.APIKeyAlias
 
+// Aggregation result types re-exported for service-layer consumers.
+type Aggregate = usageevent.Aggregate
+type ModelStat = usageevent.ModelStat
+type RecentFailure = usageevent.RecentFailure
+
 type Store struct {
 	db *sql.DB
 
@@ -126,4 +131,24 @@ func (s *Store) Counts(ctx context.Context) (events int64, deadLetters int64, er
 
 func (s *Store) ExportJSONL(ctx context.Context) ([]byte, error) {
 	return s.UsageEvents.ExportJSONL(ctx)
+}
+
+// AggregateBetween computes summary metrics over [fromMs, toMs).
+func (s *Store) AggregateBetween(ctx context.Context, fromMs, toMs int64) (Aggregate, error) {
+	return s.UsageEvents.AggregateBetween(ctx, fromMs, toMs)
+}
+
+// TopModelsBetween returns the most active models ordered by call count.
+func (s *Store) TopModelsBetween(ctx context.Context, fromMs, toMs int64, limit int) ([]ModelStat, error) {
+	return s.UsageEvents.TopModelsBetween(ctx, fromMs, toMs, limit)
+}
+
+// ModelStatsBetween returns per-model totals for all models in a window.
+func (s *Store) ModelStatsBetween(ctx context.Context, fromMs, toMs int64) ([]ModelStat, error) {
+	return s.UsageEvents.ModelStatsBetween(ctx, fromMs, toMs)
+}
+
+// RecentFailuresBetween returns the most recent failed events in window.
+func (s *Store) RecentFailuresBetween(ctx context.Context, fromMs, toMs int64, limit int) ([]RecentFailure, error) {
+	return s.UsageEvents.RecentFailuresBetween(ctx, fromMs, toMs, limit)
 }
