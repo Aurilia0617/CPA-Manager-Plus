@@ -164,6 +164,26 @@ export function IconRefreshCw({ size = 20, ...props }: IconProps) {
   );
 }
 
+export function IconArrowDownToLine({ size = 20, ...props }: IconProps) {
+  return (
+    <svg {...baseSvgProps} width={size} height={size} {...props}>
+      <path d="M12 3v12" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M5 21h14" />
+    </svg>
+  );
+}
+
+export function IconArrowUpFromLine({ size = 20, ...props }: IconProps) {
+  return (
+    <svg {...baseSvgProps} width={size} height={size} {...props}>
+      <path d="M12 21V9" />
+      <path d="m17 14-5-5-5 5" />
+      <path d="M5 3h14" />
+    </svg>
+  );
+}
+
 export function IconDownload({ size = 20, ...props }: IconProps) {
   return (
     <svg {...baseSvgProps} width={size} height={size} {...props}>
@@ -319,6 +339,30 @@ export function IconDiamond({ size = 20, ...props }: IconProps) {
   return (
     <svg {...baseSvgProps} width={size} height={size} {...props}>
       <path d="M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41l-7.59-7.59a2.41 2.41 0 0 0-3.41 0Z" />
+    </svg>
+  );
+}
+
+export function IconBinary({ size = 20, ...props }: IconProps) {
+  return (
+    <svg {...baseSvgProps} width={size} height={size} {...props}>
+      <path d="M6 20h4" />
+      <path d="M14 10h4" />
+      <path d="M6 14h2v6" />
+      <path d="M14 4h2v6" />
+      <rect width="4" height="6" x="4" y="4" rx="1" />
+      <rect width="4" height="6" x="16" y="14" rx="1" />
+    </svg>
+  );
+}
+
+export function IconDatabaseZap({ size = 20, ...props }: IconProps) {
+  return (
+    <svg {...baseSvgProps} width={size} height={size} {...props}>
+      <ellipse cx="12" cy="5" rx="8" ry="3" />
+      <path d="M4 5v5c0 1.66 3.58 3 8 3 1.2 0 2.34-.1 3.36-.28" />
+      <path d="M4 10v5c0 1.66 3.58 3 8 3 .76 0 1.49-.04 2.18-.12" />
+      <path d="m19 12-3 5h4l-3 5" />
     </svg>
   );
 }
