@@ -47,6 +47,7 @@ type Event struct {
 	CacheCreationTokens int64  `json:"cache_creation_tokens"`
 	TotalTokens         int64  `json:"total_tokens"`
 	LatencyMS           *int64 `json:"latency_ms,omitempty"`
+	TTFTMS              *int64 `json:"ttft_ms,omitempty"`
 	Failed              bool   `json:"failed"`
 	FailStatusCode      int    `json:"fail_status_code,omitempty"`
 	FailSummary         string `json:"fail_summary,omitempty"`
@@ -80,6 +81,7 @@ type Detail struct {
 	AuthProjectIDSnapshot string `json:"auth_project_id_snapshot,omitempty"`
 	AuthSnapshotAtMS      int64  `json:"auth_snapshot_at_ms,omitempty"`
 	LatencyMS             *int64 `json:"latency_ms,omitempty"`
+	TTFTMS                *int64 `json:"ttft_ms,omitempty"`
 	ResolvedModel         string `json:"resolved_model,omitempty"`
 	ReasoningEffort       string `json:"reasoning_effort,omitempty"`
 	Tokens                Tokens `json:"tokens"`
@@ -182,6 +184,7 @@ func NormalizeRaw(raw []byte) (Event, error) {
 	}
 
 	latencyMS := readOptionalInt(record, "latency_ms", "latencyMs", "duration_ms", "durationMs", "elapsed_ms", "elapsedMs")
+	ttftMS := readOptionalInt(record, "ttft_ms", "ttftMs", "time_to_first_token_ms", "timeToFirstTokenMs")
 	failed := readFailed(record)
 	failStatusCode, failBody := readFailFields(record)
 	failSummary := FailSummaryFromBody(failBody)
@@ -230,6 +233,7 @@ func NormalizeRaw(raw []byte) (Event, error) {
 		CacheCreationTokens:   cacheCreationTokens,
 		TotalTokens:           totalTokens,
 		LatencyMS:             latencyMS,
+		TTFTMS:                ttftMS,
 		Failed:                failed,
 		FailStatusCode:        int(failStatusCode),
 		FailSummary:           failSummary,
@@ -291,6 +295,7 @@ func BuildPayload(events []Event) Payload {
 			AuthProjectIDSnapshot: event.AuthProjectIDSnapshot,
 			AuthSnapshotAtMS:      event.AuthSnapshotAtMS,
 			LatencyMS:             event.LatencyMS,
+			TTFTMS:                event.TTFTMS,
 			ResolvedModel:         event.ResolvedModel,
 			ReasoningEffort:       event.ReasoningEffort,
 			Failed:                event.Failed,

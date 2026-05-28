@@ -92,11 +92,14 @@ func TestAnalyticsExposesCPA7118UsageFields(t *testing.T) {
 	ctx := context.Background()
 	fromMS := int64(1_778_000_000_000)
 	toMS := fromMS + 60*60*1000
-	event := monitoringEvent("cpa-7118-fields", fromMS+1_000, "client-gpt", "auth-1", "source-a", true, 10, 20, 3, 5, 33, nil)
+	latency := int64(1500)
+	ttft := int64(450)
+	event := monitoringEvent("cpa-7118-fields", fromMS+1_000, "client-gpt", "auth-1", "source-a", true, 10, 20, 3, 5, 33, &latency)
 	event.ResolvedModel = "gpt-5.4"
 	event.ReasoningEffort = "medium"
 	event.CacheReadTokens = 4
 	event.CacheCreationTokens = 1
+	event.TTFTMS = &ttft
 	event.FailStatusCode = 429
 	event.FailBody = "rate limit exceeded"
 	event.FailSummary = "rate limit exceeded"
@@ -137,7 +140,9 @@ func TestAnalyticsExposesCPA7118UsageFields(t *testing.T) {
 	item := resp.Events.Items[0]
 	if item.ReasoningEffort != "medium" || item.CacheReadTokens != 4 ||
 		item.CacheCreationTokens != 1 || item.CachedTokens != 0 || item.FailStatusCode == nil ||
-		*item.FailStatusCode != 429 || item.FailSummary != "rate limit exceeded" {
+		*item.FailStatusCode != 429 || item.FailSummary != "rate limit exceeded" ||
+		item.LatencyMS == nil || *item.LatencyMS != 1500 || item.TTFTMS == nil ||
+		*item.TTFTMS != 450 {
 		t.Fatalf("event item = %#v", item)
 	}
 }

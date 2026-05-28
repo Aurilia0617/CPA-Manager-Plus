@@ -113,6 +113,7 @@ type EventPageItem struct {
 	ReasoningTokens       int64
 	TotalTokens           int64
 	LatencyMS             sql.NullInt64
+	TTFTMS                sql.NullInt64
 	Failed                bool
 	FailStatusCode        sql.NullInt64
 	FailSummary           string
@@ -515,6 +516,7 @@ func (r *repository) EventsPageWithFilter(ctx context.Context, filter AnalyticsF
 	reasoning_tokens,
 	total_tokens,
 	latency_ms,
+	ttft_ms,
 	failed,
 	fail_status_code,
 	coalesce(fail_summary, '')
@@ -556,6 +558,7 @@ limit ?`, args...)
 			&item.ReasoningTokens,
 			&item.TotalTokens,
 			&item.LatencyMS,
+			&item.TTFTMS,
 			&failed,
 			&item.FailStatusCode,
 			&item.FailSummary,

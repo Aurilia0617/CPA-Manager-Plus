@@ -59,8 +59,8 @@ func (r *repository) InsertBatch(ctx context.Context, events []model.UsageEvent)
 		account_snapshot, auth_label_snapshot, auth_file_snapshot, auth_provider_snapshot, auth_project_id_snapshot, auth_snapshot_at_ms,
 		requested_model, resolved_model, reasoning_effort,
 		input_tokens, output_tokens, reasoning_tokens, cached_tokens, cache_tokens, cache_read_tokens, cache_creation_tokens, total_tokens,
-		latency_ms, failed, fail_status_code, fail_summary, fail_body, raw_json, created_at_ms
-	) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+		latency_ms, ttft_ms, failed, fail_status_code, fail_summary, fail_body, raw_json, created_at_ms
+	) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return model.InsertResult{}, err
 	}
@@ -112,6 +112,7 @@ func (r *repository) InsertBatch(ctx context.Context, events []model.UsageEvent)
 			event.CacheCreationTokens,
 			event.TotalTokens,
 			nullInt(event.LatencyMS),
+			nullInt(event.TTFTMS),
 			failed,
 			nullPositiveInt64(int64(event.FailStatusCode)),
 			nullString(failSummary),
@@ -145,7 +146,7 @@ func (r *repository) ListRecent(ctx context.Context, limit int) ([]model.UsageEv
 		account_snapshot, auth_label_snapshot, auth_file_snapshot, auth_provider_snapshot, auth_project_id_snapshot, auth_snapshot_at_ms,
 		requested_model, resolved_model, reasoning_effort,
 		input_tokens, output_tokens, reasoning_tokens, cached_tokens, cache_tokens, cache_read_tokens, cache_creation_tokens, total_tokens,
-		latency_ms, failed, fail_status_code, fail_summary, created_at_ms
+		latency_ms, ttft_ms, failed, fail_status_code, fail_summary, created_at_ms
 		from usage_events
 		order by timestamp_ms desc, id desc
 		limit ?`, limit)
@@ -159,7 +160,7 @@ func (r *repository) ListRecent(ctx context.Context, limit int) ([]model.UsageEv
 		var event model.UsageEvent
 		var requestID, provider, endpoint, method, path, authType, authIndex, source, sourceHash, apiKeyHash, accountSnapshot, authLabelSnapshot, authFileSnapshot, authProviderSnapshot, authProjectIDSnapshot, requestedModel, resolvedModel, reasoningEffort, failSummary sql.NullString
 		var authSnapshotAt sql.NullInt64
-		var latency sql.NullInt64
+		var latency, ttft sql.NullInt64
 		var failStatusCode sql.NullInt64
 		var failed int
 		if err := rows.Scan(
@@ -195,6 +196,7 @@ func (r *repository) ListRecent(ctx context.Context, limit int) ([]model.UsageEv
 			&event.CacheCreationTokens,
 			&event.TotalTokens,
 			&latency,
+			&ttft,
 			&failed,
 			&failStatusCode,
 			&failSummary,
@@ -231,6 +233,10 @@ func (r *repository) ListRecent(ctx context.Context, limit int) ([]model.UsageEv
 		if latency.Valid {
 			value := latency.Int64
 			event.LatencyMS = &value
+		}
+		if ttft.Valid {
+			value := ttft.Int64
+			event.TTFTMS = &value
 		}
 		events = append(events, event)
 	}

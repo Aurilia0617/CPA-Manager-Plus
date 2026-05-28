@@ -12,9 +12,11 @@ const t = ((key: string, options?: Record<string, string>) => {
     'monitoring.cache_read_tokens_short': 'Read',
     'monitoring.column_latency': 'Latency',
     'monitoring.column_model': 'Model',
+    'monitoring.column_output_tps': 'TPS',
     'monitoring.column_success_rate': 'Success',
     'monitoring.column_time': 'Time',
     'monitoring.column_type': 'Type',
+    'monitoring.elapsed_short': 'Elapsed',
     'monitoring.fail_status_code_short': 'HTTP',
     'monitoring.filter_status_failed': 'Failed only',
     'monitoring.load_more_events': 'Load more',
@@ -29,6 +31,7 @@ const t = ((key: string, options?: Record<string, string>) => {
     'monitoring.result_success': 'Success',
     'monitoring.this_call_cost': 'Cost',
     'monitoring.this_call_usage': 'Usage',
+    'monitoring.ttft_short': 'TTFT',
   };
   if (key === 'monitoring.resolved_model_label') {
     return `Resolved ${options?.model ?? ''}`.trim();
@@ -48,7 +51,7 @@ type PanelRow = MonitoringEventRow & {
 const baseRow = (overrides: Partial<PanelRow> = {}): PanelRow => ({
   id: 'row-1',
   timestamp: '2026-04-25T00:00:00Z',
-  timestampMs: Date.UTC(2026, 3, 25),
+  timestampMs: Date.UTC(2026, 3, 25, 12, 34, 56),
   dayKey: '2026-04-25',
   hourLabel: '00:00',
   model: 'client-gpt',
@@ -76,6 +79,8 @@ const baseRow = (overrides: Partial<PanelRow> = {}): PanelRow => ({
   failed: false,
   statsIncluded: true,
   latencyMs: 1500,
+  ttftMs: 500,
+  tokensPerSecond: 20,
   inputTokens: 10,
   outputTokens: 20,
   reasoningTokens: 3,
@@ -123,6 +128,18 @@ const renderPanel = (row: PanelRow) =>
   );
 
 describe('RealtimeEventsPanel', () => {
+  const expectedDate = new Date(baseRow().timestampMs).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const expectedTime = new Date(baseRow().timestampMs).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
   it('renders CPA v7.1.18 usage details for failed rows', () => {
     const markup = renderPanel(
       baseRow({
@@ -137,8 +154,14 @@ describe('RealtimeEventsPanel', () => {
     );
 
     expect(markup).toContain('<th>Effort</th>');
+    expect(markup).toContain('>TPS</th>');
     expect(markup).toContain('medium');
     expect(markup).toContain('Failed');
+    expect(markup).toContain('TTFT');
+    expect(markup).toContain('500ms');
+    expect(markup).toContain('Elapsed');
+    expect(markup).toContain('1.5s');
+    expect(markup).toContain('20');
     expect(markup).toContain('I 10 · O 20 · C 5');
     expect(markup).not.toContain('Read 4');
     expect(markup).not.toContain('Create 1');
@@ -155,13 +178,25 @@ describe('RealtimeEventsPanel', () => {
 
     expect(markup).not.toContain('Effort -');
     expect(markup).toContain('<th>Effort</th>');
+    expect(markup).toContain('>TPS</th>');
     expect(markup).toContain('Success');
+    expect(markup).toContain('TTFT');
+    expect(markup).toContain(expectedDate);
+    expect(markup).toContain(expectedTime);
     expect(markup).toContain('I 10 · O 20 · C 5');
     expect(markup).not.toContain('Read 0');
     expect(markup).not.toContain('Create 0');
     expect(markup).not.toContain('role="tooltip"');
     expect(markup).not.toContain('aria-describedby=');
     expect(markup).not.toContain('HTTP');
+  });
+
+  it('hides ttft latency details when ttft is missing', () => {
+    const markup = renderPanel(baseRow({ ttftMs: null }));
+
+    expect(markup).toContain('>TPS</th>');
+    expect(markup).not.toContain('TTFT');
+    expect(markup).not.toContain('TTFT --');
   });
 
   it('renders residual cached tokens even when they equal cache read tokens', () => {

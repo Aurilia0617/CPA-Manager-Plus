@@ -1231,6 +1231,61 @@
   line-height: 1.45;
 }
 
+.realtimeMetricCell,
+.realtimeTimeCell {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  color: var(--monitor-ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
+.realtimeMetricLine,
+.realtimeTimeLine,
+.realtimeTpsCell {
+  white-space: nowrap;
+}
+
+.realtimeMetricLine {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.realtimeMetricLabel {
+  color: var(--monitor-muted);
+}
+
+.realtimeMetricValue {
+  color: inherit;
+}
+
+.realtimeMetricTtft {
+  color: var(--monitor-ink);
+}
+
+.realtimeTpsColumn {
+  text-align: center !important;
+}
+
+.realtimeTpsCell {
+  display: inline-block;
+  min-width: 48px;
+  font-variant-numeric: tabular-nums;
+}
+
+.realtimeTimeCell {
+  min-width: 94px;
+}
+
+.realtimeTimeLine {
+  width: 82px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+
 .logTypeCell {
   display: block;
   align-items: center;
@@ -1813,7 +1868,7 @@
   }
 
   .realtimeTable {
-    min-width: 1180px;
+    min-width: 1260px;
   }
 }
 

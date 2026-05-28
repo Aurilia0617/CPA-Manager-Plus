@@ -78,6 +78,7 @@ func TestStoreCompatMigratesLegacyUsageEventSchema(t *testing.T) {
 		"reasoning_effort",
 		"cache_read_tokens",
 		"cache_creation_tokens",
+		"ttft_ms",
 		"fail_status_code",
 		"fail_summary",
 		"fail_body",
@@ -87,24 +88,26 @@ func TestStoreCompatMigratesLegacyUsageEventSchema(t *testing.T) {
 		}
 	}
 	var cacheReadTokens, cacheCreationTokens int64
-	var failStatusCode sql.NullInt64
+	var failStatusCode, ttftMS sql.NullInt64
 	var failSummary, failBody sql.NullString
-	if err := store.db.QueryRow(`select cache_read_tokens, cache_creation_tokens, fail_status_code, fail_summary, fail_body
+	if err := store.db.QueryRow(`select cache_read_tokens, cache_creation_tokens, ttft_ms, fail_status_code, fail_summary, fail_body
 		from usage_events where event_hash = 'pre-migration-event'`).Scan(
 		&cacheReadTokens,
 		&cacheCreationTokens,
+		&ttftMS,
 		&failStatusCode,
 		&failSummary,
 		&failBody,
 	); err != nil {
 		t.Fatalf("read pre-migration defaults: %v", err)
 	}
-	if cacheReadTokens != 0 || cacheCreationTokens != 0 || failStatusCode.Valid ||
+	if cacheReadTokens != 0 || cacheCreationTokens != 0 || ttftMS.Valid || failStatusCode.Valid ||
 		failSummary.Valid || failBody.Valid {
-		t.Fatalf("pre-migration defaults read=%d creation=%d status=%#v summary=%#v body=%#v",
-			cacheReadTokens, cacheCreationTokens, failStatusCode, failSummary, failBody)
+		t.Fatalf("pre-migration defaults read=%d creation=%d ttft=%#v status=%#v summary=%#v body=%#v",
+			cacheReadTokens, cacheCreationTokens, ttftMS, failStatusCode, failSummary, failBody)
 	}
 
+	ttft := int64(320)
 	_, err = store.InsertEvents(context.Background(), []usage.Event{
 		{
 			EventHash:            "legacy-schema-event",
@@ -123,6 +126,7 @@ func TestStoreCompatMigratesLegacyUsageEventSchema(t *testing.T) {
 			CacheReadTokens:      4,
 			CacheCreationTokens:  1,
 			TotalTokens:          3,
+			TTFTMS:               &ttft,
 			Failed:               true,
 			FailStatusCode:       429,
 			FailSummary:          "rate limit exceeded",
@@ -147,6 +151,7 @@ func TestStoreCompatMigratesLegacyUsageEventSchema(t *testing.T) {
 	if migrated.EventHash == "" || migrated.AccountSnapshot != "alice@example.com" ||
 		migrated.AuthProviderSnapshot != "codex" || migrated.ReasoningEffort != "medium" ||
 		migrated.CacheReadTokens != 4 || migrated.CacheCreationTokens != 1 ||
+		migrated.TTFTMS == nil || *migrated.TTFTMS != 320 ||
 		migrated.FailStatusCode != 429 || migrated.FailSummary != "rate limit exceeded" ||
 		migrated.FailBody != "" ||
 		!migrated.Failed {

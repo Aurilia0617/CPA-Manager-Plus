@@ -208,6 +208,7 @@ func TestNormalizeRawReadsCPA7118UsageFields(t *testing.T) {
 	payload := `{
 	  "timestamp": "2026-04-25T00:00:00Z",
 	  "latency_ms": 1500,
+	  "ttft_ms": 450,
 	  "source": "user@example.com",
 	  "auth_index": "0",
 	  "tokens": {
@@ -257,6 +258,9 @@ func TestNormalizeRawReadsCPA7118UsageFields(t *testing.T) {
 	if event.LatencyMS == nil || *event.LatencyMS != 1500 {
 		t.Fatalf("latency = %#v", event.LatencyMS)
 	}
+	if event.TTFTMS == nil || *event.TTFTMS != 450 {
+		t.Fatalf("ttft = %#v", event.TTFTMS)
+	}
 
 	legacyPayload := BuildPayload([]Event{event})
 	api := legacyPayload.APIs["POST /v1/chat/completions"]
@@ -271,7 +275,8 @@ func TestNormalizeRawReadsCPA7118UsageFields(t *testing.T) {
 	if detail.ReasoningEffort != "medium" || detail.Tokens.CacheReadTokens != 4 ||
 		detail.Tokens.CacheCreationTokens != 1 || detail.FailStatusCode != 429 ||
 		detail.Tokens.CachedTokens != 0 || detail.Tokens.CacheTokens != 0 ||
-		detail.FailSummary != "rate limit exceeded" {
+		detail.FailSummary != "rate limit exceeded" || detail.TTFTMS == nil ||
+		*detail.TTFTMS != 450 {
 		t.Fatalf("detail = %#v", detail)
 	}
 }
