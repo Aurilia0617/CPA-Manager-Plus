@@ -24,6 +24,12 @@ const (
 
 	CodexInspectionTriggerManual    = "manual"
 	CodexInspectionTriggerScheduled = "scheduled"
+
+	CodexInspectionActionStatusNone    = "none"
+	CodexInspectionActionStatusPending = "pending"
+	CodexInspectionActionStatusSuccess = "success"
+	CodexInspectionActionStatusFailed  = "failed"
+	CodexInspectionActionStatusSkipped = "skipped"
 )
 
 type ManagerCodexInspectionConfig struct {
@@ -85,6 +91,9 @@ type CodexInspectionResult struct {
 	State          string   `json:"state,omitempty"`
 	Action         string   `json:"action"`
 	ActionReason   string   `json:"actionReason"`
+	ActionStatus   string   `json:"actionStatus,omitempty"`
+	ExecutedAction string   `json:"executedAction,omitempty"`
+	ActionError    string   `json:"actionError,omitempty"`
 	StatusCode     *int     `json:"statusCode,omitempty"`
 	UsedPercent    *float64 `json:"usedPercent,omitempty"`
 	IsQuota        bool     `json:"isQuota"`
@@ -136,6 +145,9 @@ func NormalizeCodexInspectionConfig(input ManagerCodexInspectionConfig, fallback
 	next.Workers = positiveOr(input.Workers, base.Workers)
 	next.DeleteWorkers = positiveOr(input.DeleteWorkers, positiveOr(input.Workers, base.DeleteWorkers))
 	next.Timeout = positiveOr(input.Timeout, base.Timeout)
+	// Retries and SampleSize intentionally accept zero as an explicit value.
+	// Frontend config submissions write complete config objects, so omitted
+	// fields are indistinguishable from zero in this non-pointer schema.
 	if input.Retries >= 0 {
 		next.Retries = input.Retries
 	}
@@ -286,6 +298,28 @@ func NormalizeCodexInspectionAutoActionMode(value string, fallback string) strin
 			return fallback
 		}
 		return CodexInspectionAutoActionNone
+	}
+}
+
+func NormalizeCodexInspectionActionStatus(value string, action string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case CodexInspectionActionStatusNone:
+		return CodexInspectionActionStatusNone
+	case CodexInspectionActionStatusSuccess:
+		return CodexInspectionActionStatusSuccess
+	case CodexInspectionActionStatusFailed:
+		return CodexInspectionActionStatusFailed
+	case CodexInspectionActionStatusSkipped:
+		return CodexInspectionActionStatusSkipped
+	case CodexInspectionActionStatusPending:
+		return CodexInspectionActionStatusPending
+	default:
+		switch strings.ToLower(strings.TrimSpace(action)) {
+		case CodexInspectionAutoActionDelete, CodexInspectionAutoActionDisable, CodexInspectionAutoActionEnable:
+			return CodexInspectionActionStatusPending
+		default:
+			return CodexInspectionActionStatusNone
+		}
 	}
 }
 

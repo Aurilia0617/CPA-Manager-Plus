@@ -135,6 +135,7 @@ func (r *repository) InsertResult(ctx context.Context, result model.CodexInspect
 	if result.CreatedAtMS <= 0 {
 		result.CreatedAtMS = time.Now().UnixMilli()
 	}
+	result.ActionStatus = model.NormalizeCodexInspectionActionStatus(result.ActionStatus, result.Action)
 	disabled := 0
 	if result.Disabled {
 		disabled = 1
@@ -148,8 +149,9 @@ func (r *repository) InsertResult(ctx context.Context, result model.CodexInspect
 		`insert into codex_inspection_results (
 			run_id, account_key, file_name, display_account, auth_index, account_id,
 			provider, disabled, status, state, action, action_reason, status_code,
-			used_percent, is_quota, error, created_at_ms
-		) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			used_percent, is_quota, error, action_status, executed_action, action_error,
+			created_at_ms
+		) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		on conflict(run_id, account_key) do update set
 			file_name = excluded.file_name,
 			display_account = excluded.display_account,
@@ -165,6 +167,9 @@ func (r *repository) InsertResult(ctx context.Context, result model.CodexInspect
 			used_percent = excluded.used_percent,
 			is_quota = excluded.is_quota,
 			error = excluded.error,
+			action_status = excluded.action_status,
+			executed_action = excluded.executed_action,
+			action_error = excluded.action_error,
 			created_at_ms = excluded.created_at_ms`,
 		result.RunID,
 		result.AccountKey,
@@ -182,6 +187,9 @@ func (r *repository) InsertResult(ctx context.Context, result model.CodexInspect
 		nullFloat(result.UsedPercent),
 		isQuota,
 		nullString(result.Error),
+		nullString(result.ActionStatus),
+		nullString(result.ExecutedAction),
+		nullString(result.ActionError),
 		result.CreatedAtMS,
 	)
 	if err != nil {
@@ -304,7 +312,8 @@ func (r *repository) ListResults(ctx context.Context, runID int64) ([]model.Code
 		`select
 			id, run_id, account_key, file_name, display_account, auth_index, account_id,
 			provider, disabled, status, state, action, action_reason, status_code,
-			used_percent, is_quota, error, created_at_ms
+			used_percent, is_quota, error, action_status, executed_action, action_error,
+			created_at_ms
 		from codex_inspection_results
 		where run_id = ?
 		order by file_name asc, display_account asc, id asc`,
@@ -395,6 +404,7 @@ func scanRun(row scanner) (model.CodexInspectionRun, error) {
 func scanResult(row scanner) (model.CodexInspectionResult, error) {
 	var result model.CodexInspectionResult
 	var authIndex, accountID, provider, status, state, actionReason, errorText sql.NullString
+	var actionStatus, executedAction, actionError sql.NullString
 	var statusCode sql.NullInt64
 	var usedPercent sql.NullFloat64
 	var disabled, isQuota int
@@ -416,6 +426,9 @@ func scanResult(row scanner) (model.CodexInspectionResult, error) {
 		&usedPercent,
 		&isQuota,
 		&errorText,
+		&actionStatus,
+		&executedAction,
+		&actionError,
 		&result.CreatedAtMS,
 	); err != nil {
 		return model.CodexInspectionResult{}, err
@@ -429,6 +442,9 @@ func scanResult(row scanner) (model.CodexInspectionResult, error) {
 	result.ActionReason = actionReason.String
 	result.IsQuota = isQuota != 0
 	result.Error = errorText.String
+	result.ActionStatus = model.NormalizeCodexInspectionActionStatus(actionStatus.String, result.Action)
+	result.ExecutedAction = executedAction.String
+	result.ActionError = actionError.String
 	if statusCode.Valid {
 		value := int(statusCode.Int64)
 		result.StatusCode = &value
