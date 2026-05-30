@@ -3,6 +3,8 @@ package usageevent
 import (
 	"context"
 	"database/sql"
+
+	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/sqldb"
 )
 
 // Aggregate captures roll-up metrics for a usage_events window.
@@ -54,25 +56,31 @@ type RecentFailure struct {
 	FailSummary           string
 }
 
-const aggregateSQL = `select
-	count(*),
-	sum(case when failed = 0 then 1 else 0 end),
-	sum(case when failed = 1 then 1 else 0 end),
-	coalesce(sum(input_tokens), 0),
-	coalesce(sum(output_tokens), 0),
-	coalesce(sum(reasoning_tokens), 0),
-	coalesce(sum(max(max(cached_tokens, cache_tokens) - max(cache_read_tokens, 0) - max(cache_creation_tokens, 0), 0)), 0),
-	coalesce(sum(cache_read_tokens), 0),
-	coalesce(sum(cache_creation_tokens), 0),
-	coalesce(sum(total_tokens), 0),
-	avg(nullif(latency_ms, 0)),
-	coalesce(sum(case when total_tokens = 0 and failed = 0 then 1 else 0 end), 0)
-from usage_events
-where timestamp_ms >= ? and timestamp_ms < ?`
+func (r *repository) cachedTokensExpr(prefix string) string {
+	if r.dialect == sqldb.DialectPostgres {
+		return "greatest(greatest(" + prefix + "cached_tokens, " + prefix + "cache_tokens) - greatest(" + prefix + "cache_read_tokens, 0) - greatest(" + prefix + "cache_creation_tokens, 0), 0)"
+	}
+	return "max(max(" + prefix + "cached_tokens, " + prefix + "cache_tokens) - max(" + prefix + "cache_read_tokens, 0) - max(" + prefix + "cache_creation_tokens, 0), 0)"
+}
 
 // AggregateBetween computes summary metrics over [fromMs, toMs).
 func (r *repository) AggregateBetween(ctx context.Context, fromMs, toMs int64) (Aggregate, error) {
-	row := r.db.QueryRowContext(ctx, aggregateSQL, fromMs, toMs)
+	query := `select
+		count(*),
+		sum(case when failed = 0 then 1 else 0 end),
+		sum(case when failed = 1 then 1 else 0 end),
+		coalesce(sum(input_tokens), 0),
+		coalesce(sum(output_tokens), 0),
+		coalesce(sum(reasoning_tokens), 0),
+		coalesce(sum(` + r.cachedTokensExpr("") + `), 0),
+		coalesce(sum(cache_read_tokens), 0),
+		coalesce(sum(cache_creation_tokens), 0),
+		coalesce(sum(total_tokens), 0),
+		avg(nullif(latency_ms, 0)),
+		coalesce(sum(case when total_tokens = 0 and failed = 0 then 1 else 0 end), 0)
+	from usage_events
+	where timestamp_ms >= ? and timestamp_ms < ?`
+	row := sqldb.QueryRowContext(ctx, r.db, r.dialect, query, fromMs, toMs)
 	var agg Aggregate
 	var success, failure sql.NullInt64
 	if err := row.Scan(
@@ -96,40 +104,39 @@ func (r *repository) AggregateBetween(ctx context.Context, fromMs, toMs int64) (
 	return agg, nil
 }
 
-const topModelsSQL = `with top_models as (
-	select
-		model,
-		count(*) as model_calls
-	from usage_events
-	where timestamp_ms >= ? and timestamp_ms < ?
-	group by model
-	order by model_calls desc
-	limit ?
-)
-select
-	e.model,
-	coalesce(nullif(e.resolved_model, ''), e.model) as billing_model,
-	count(*) as calls,
-	sum(case when e.failed = 0 then 1 else 0 end) as success,
-	coalesce(sum(e.input_tokens), 0),
-	coalesce(sum(e.output_tokens), 0),
-	coalesce(sum(e.reasoning_tokens), 0),
-	coalesce(sum(max(max(e.cached_tokens, e.cache_tokens) - max(e.cache_read_tokens, 0) - max(e.cache_creation_tokens, 0), 0)), 0),
-	coalesce(sum(e.cache_read_tokens), 0),
-	coalesce(sum(e.cache_creation_tokens), 0),
-	coalesce(sum(e.total_tokens), 0)
-from usage_events e
-join top_models t on t.model = e.model
-where e.timestamp_ms >= ? and e.timestamp_ms < ?
-group by e.model, billing_model
-order by max(t.model_calls) desc, e.model, calls desc`
-
 // TopModelsBetween returns the most active models ordered by call count.
 func (r *repository) TopModelsBetween(ctx context.Context, fromMs, toMs int64, limit int) ([]ModelStat, error) {
 	if limit <= 0 {
 		limit = 5
 	}
-	rows, err := r.db.QueryContext(ctx, topModelsSQL, fromMs, toMs, limit, fromMs, toMs)
+	query := `with top_models as (
+		select
+			model,
+			count(*) as model_calls
+		from usage_events
+		where timestamp_ms >= ? and timestamp_ms < ?
+		group by model
+		order by model_calls desc
+		limit ?
+	)
+	select
+		e.model,
+		coalesce(nullif(e.resolved_model, ''), e.model) as billing_model,
+		count(*) as calls,
+		sum(case when e.failed = 0 then 1 else 0 end) as success,
+		coalesce(sum(e.input_tokens), 0),
+		coalesce(sum(e.output_tokens), 0),
+		coalesce(sum(e.reasoning_tokens), 0),
+		coalesce(sum(` + r.cachedTokensExpr("e.") + `), 0),
+		coalesce(sum(e.cache_read_tokens), 0),
+		coalesce(sum(e.cache_creation_tokens), 0),
+		coalesce(sum(e.total_tokens), 0)
+	from usage_events e
+	join top_models t on t.model = e.model
+	where e.timestamp_ms >= ? and e.timestamp_ms < ?
+	group by e.model, billing_model
+	order by max(t.model_calls) desc, e.model, calls desc`
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, query, fromMs, toMs, limit, fromMs, toMs)
 	if err != nil {
 		return nil, err
 	}
@@ -158,26 +165,25 @@ func (r *repository) TopModelsBetween(ctx context.Context, fromMs, toMs int64, l
 	return stats, rows.Err()
 }
 
-const modelStatsSQL = `select
-	model,
-	coalesce(nullif(resolved_model, ''), model) as billing_model,
-	count(*) as calls,
-	sum(case when failed = 0 then 1 else 0 end) as success,
-	coalesce(sum(input_tokens), 0),
-	coalesce(sum(output_tokens), 0),
-	coalesce(sum(reasoning_tokens), 0),
-	coalesce(sum(max(max(cached_tokens, cache_tokens) - max(cache_read_tokens, 0) - max(cache_creation_tokens, 0), 0)), 0),
-	coalesce(sum(cache_read_tokens), 0),
-	coalesce(sum(cache_creation_tokens), 0),
-	coalesce(sum(total_tokens), 0)
-from usage_events
-where timestamp_ms >= ? and timestamp_ms < ?
-group by model, billing_model
-order by calls desc`
-
 // ModelStatsBetween returns per-model totals for all models in a window.
 func (r *repository) ModelStatsBetween(ctx context.Context, fromMs, toMs int64) ([]ModelStat, error) {
-	rows, err := r.db.QueryContext(ctx, modelStatsSQL, fromMs, toMs)
+	query := `select
+		model,
+		coalesce(nullif(resolved_model, ''), model) as billing_model,
+		count(*) as calls,
+		sum(case when failed = 0 then 1 else 0 end) as success,
+		coalesce(sum(input_tokens), 0),
+		coalesce(sum(output_tokens), 0),
+		coalesce(sum(reasoning_tokens), 0),
+		coalesce(sum(` + r.cachedTokensExpr("") + `), 0),
+		coalesce(sum(cache_read_tokens), 0),
+		coalesce(sum(cache_creation_tokens), 0),
+		coalesce(sum(total_tokens), 0)
+	from usage_events
+	where timestamp_ms >= ? and timestamp_ms < ?
+	group by model, billing_model
+	order by calls desc`
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, query, fromMs, toMs)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +236,7 @@ func (r *repository) RecentFailuresBetween(ctx context.Context, fromMs, toMs int
 	if limit <= 0 {
 		limit = 5
 	}
-	rows, err := r.db.QueryContext(ctx, recentFailuresSQL, fromMs, toMs, limit)
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, recentFailuresSQL, fromMs, toMs, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +278,7 @@ func (r *repository) BucketTimelineBetween(ctx context.Context, fromMs, toMs int
 	if bucketMs <= 0 {
 		bucketMs = 3600000
 	}
-	rows, err := r.db.QueryContext(ctx, `select
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, `select
 	cast((timestamp_ms - ?) / ? as integer) as bucket_index,
 	count(*),
 	coalesce(sum(total_tokens), 0),

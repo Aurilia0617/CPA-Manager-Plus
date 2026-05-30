@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 
 	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/model"
+	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/sqldb"
 	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/usage"
 )
 
@@ -34,11 +35,12 @@ type Repository interface {
 }
 
 type repository struct {
-	db *sql.DB
+	db      *sql.DB
+	dialect sqldb.Dialect
 }
 
-func New(db *sql.DB) Repository {
-	return &repository{db: db}
+func New(db *sql.DB, dialect sqldb.Dialect) Repository {
+	return &repository{db: db, dialect: dialect}
 }
 
 func (r *repository) InsertBatch(ctx context.Context, events []model.UsageEvent) (model.InsertResult, error) {
@@ -53,14 +55,20 @@ func (r *repository) InsertBatch(ctx context.Context, events []model.UsageEvent)
 		_ = tx.Rollback()
 	}()
 
-	stmt, err := tx.PrepareContext(ctx, `insert or ignore into usage_events (
+	insertSQL := `insert into usage_events (
 		request_id, event_hash, timestamp_ms, timestamp, provider, model, endpoint, method, path,
 		auth_type, auth_index, source, source_hash, api_key_hash,
 		account_snapshot, auth_label_snapshot, auth_file_snapshot, auth_provider_snapshot, auth_project_id_snapshot, auth_snapshot_at_ms,
 		requested_model, resolved_model, reasoning_effort,
 		input_tokens, output_tokens, reasoning_tokens, cached_tokens, cache_tokens, cache_read_tokens, cache_creation_tokens, total_tokens,
 		latency_ms, ttft_ms, failed, fail_status_code, fail_summary, fail_body, raw_json, created_at_ms
-	) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	if r.dialect == sqldb.DialectPostgres {
+		insertSQL += ` on conflict(event_hash) do nothing`
+	} else {
+		insertSQL = `insert or ignore` + insertSQL[len(`insert`):]
+	}
+	stmt, err := sqldb.PrepareContext(ctx, tx, r.dialect, insertSQL)
 	if err != nil {
 		return model.InsertResult{}, err
 	}
@@ -140,7 +148,7 @@ func (r *repository) ListRecent(ctx context.Context, limit int) ([]model.UsageEv
 	if limit <= 0 {
 		limit = 50000
 	}
-	rows, err := r.db.QueryContext(ctx, `select
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, `select
 		request_id, event_hash, timestamp_ms, timestamp, provider, model, endpoint, method, path,
 		auth_type, auth_index, source, source_hash, api_key_hash,
 		account_snapshot, auth_label_snapshot, auth_file_snapshot, auth_provider_snapshot, auth_project_id_snapshot, auth_snapshot_at_ms,

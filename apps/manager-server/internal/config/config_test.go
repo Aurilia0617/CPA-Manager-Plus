@@ -110,6 +110,7 @@ func TestLoadEnvOverridesConfig(t *testing.T) {
 	t.Setenv("HTTP_ADDR", "127.0.0.1:19001")
 	t.Setenv("USAGE_DATA_DIR", filepath.Join(dir, "env-data"))
 	t.Setenv("CPA_MANAGEMENT_KEY", "env-secret")
+	t.Setenv("DATABASE_URL", "postgres://user:pass@db.example:5432/cpamp?sslmode=require")
 	t.Setenv("USAGE_BATCH_SIZE", "12")
 
 	cfg, err := Load()
@@ -124,6 +125,9 @@ func TestLoadEnvOverridesConfig(t *testing.T) {
 	}
 	if cfg.ManagementKey != "env-secret" {
 		t.Fatalf("ManagementKey = %q", cfg.ManagementKey)
+	}
+	if cfg.DatabaseURL != "postgres://user:pass@db.example:5432/cpamp?sslmode=require" {
+		t.Fatalf("DatabaseURL = %q", cfg.DatabaseURL)
 	}
 	if cfg.BatchSize != 12 {
 		t.Fatalf("BatchSize = %d", cfg.BatchSize)
@@ -158,6 +162,9 @@ func clearConfigEnv(t *testing.T) {
 		"HTTP_ADDR",
 		"USAGE_DATA_DIR",
 		"USAGE_DB_PATH",
+		"DATABASE_URL",
+		"CPA_MANAGER_DATABASE_URL",
+		"POSTGRES_DSN",
 		"CPA_UPSTREAM_URL",
 		"CPA_MANAGEMENT_KEY",
 		"CPA_MANAGEMENT_KEY_FILE",

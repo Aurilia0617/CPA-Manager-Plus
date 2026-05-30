@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/model"
+	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/sqldb"
 )
 
 type Repository interface {
@@ -18,15 +19,16 @@ type Repository interface {
 }
 
 type repository struct {
-	db *sql.DB
+	db      *sql.DB
+	dialect sqldb.Dialect
 }
 
-func New(db *sql.DB) Repository {
-	return &repository{db: db}
+func New(db *sql.DB, dialect sqldb.Dialect) Repository {
+	return &repository{db: db, dialect: dialect}
 }
 
 func (r *repository) LoadAll(ctx context.Context) (map[string]model.ModelPrice, error) {
-	rows, err := r.db.QueryContext(ctx, `select
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, `select
 		model, prompt_per_1m, completion_per_1m, cache_per_1m, cache_read_per_1m, cache_creation_per_1m, source, source_model_id, raw_json,
 		updated_at_ms, synced_at_ms
 		from model_prices order by model`)
@@ -84,7 +86,7 @@ func (r *repository) ReplaceAll(ctx context.Context, prices map[string]model.Mod
 		return tx.Commit()
 	}
 
-	stmt, err := tx.PrepareContext(ctx, `insert into model_prices (
+	stmt, err := sqldb.PrepareContext(ctx, tx, r.dialect, `insert into model_prices (
 		model, prompt_per_1m, completion_per_1m, cache_per_1m, cache_read_per_1m, cache_creation_per_1m, source, source_model_id,
 		raw_json, updated_at_ms, synced_at_ms
 	) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
@@ -130,7 +132,7 @@ func (r *repository) UpsertSynced(ctx context.Context, prices map[string]model.M
 		_ = tx.Rollback()
 	}()
 
-	stmt, err := tx.PrepareContext(ctx, `insert into model_prices (
+	stmt, err := sqldb.PrepareContext(ctx, tx, r.dialect, `insert into model_prices (
 		model, prompt_per_1m, completion_per_1m, cache_per_1m, cache_read_per_1m, cache_creation_per_1m, source, source_model_id,
 		raw_json, updated_at_ms, synced_at_ms
 	) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

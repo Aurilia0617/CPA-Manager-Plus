@@ -5,11 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-)
 
-const (
-	compatCachedExpr  = "max(max(cached_tokens, cache_tokens) - max(cache_read_tokens, 0) - max(cache_creation_tokens, 0), 0)"
-	compatCachedFExpr = "max(max(f.cached_tokens, f.cache_tokens) - max(f.cache_read_tokens, 0) - max(f.cache_creation_tokens, 0), 0)"
+	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/sqldb"
 )
 
 type AnalyticsFilter struct {
@@ -134,16 +131,30 @@ type EventsPage struct {
 	HasMore      bool
 }
 
+func (r *repository) hourExpr() string {
+	if r.dialect == sqldb.DialectPostgres {
+		return "extract(hour from to_timestamp(timestamp_ms / 1000.0))::integer"
+	}
+	return "cast(strftime('%H', datetime(timestamp_ms / 1000, 'unixepoch')) as integer)"
+}
+
+func (r *repository) distinctConcatExpr(column string) string {
+	if r.dialect == sqldb.DialectPostgres {
+		return "coalesce(string_agg(distinct " + column + ", ','), '')"
+	}
+	return "coalesce(group_concat(distinct " + column + "), '')"
+}
+
 func (r *repository) AggregateWithFilter(ctx context.Context, filter AnalyticsFilter) (Aggregate, error) {
 	where, args := analyticsWhere(filter)
-	row := r.db.QueryRowContext(ctx, `select
+	row := sqldb.QueryRowContext(ctx, r.db, r.dialect, `select
 	count(*),
 	sum(case when failed = 0 then 1 else 0 end),
 	sum(case when failed = 1 then 1 else 0 end),
 	coalesce(sum(input_tokens), 0),
 	coalesce(sum(output_tokens), 0),
 	coalesce(sum(reasoning_tokens), 0),
-	coalesce(sum(`+compatCachedExpr+`), 0),
+	coalesce(sum(`+r.cachedTokensExpr("")+`), 0),
 	coalesce(sum(cache_read_tokens), 0),
 	coalesce(sum(cache_creation_tokens), 0),
 	coalesce(sum(total_tokens), 0),
@@ -184,7 +195,7 @@ func (r *repository) ModelStatsWithFilter(ctx context.Context, filter AnalyticsF
 	coalesce(sum(input_tokens), 0),
 	coalesce(sum(output_tokens), 0),
 	coalesce(sum(reasoning_tokens), 0),
-	coalesce(sum(` + compatCachedExpr + `), 0),
+	coalesce(sum(` + r.cachedTokensExpr("") + `), 0),
 	coalesce(sum(cache_read_tokens), 0),
 	coalesce(sum(cache_creation_tokens), 0),
 	coalesce(sum(total_tokens), 0)
@@ -210,7 +221,7 @@ select
 	coalesce(sum(f.input_tokens), 0),
 	coalesce(sum(f.output_tokens), 0),
 	coalesce(sum(f.reasoning_tokens), 0),
-	coalesce(sum(` + compatCachedFExpr + `), 0),
+	coalesce(sum(` + r.cachedTokensExpr("f.") + `), 0),
 	coalesce(sum(f.cache_read_tokens), 0),
 	coalesce(sum(f.cache_creation_tokens), 0),
 	coalesce(sum(f.total_tokens), 0)
@@ -220,7 +231,7 @@ group by f.model, billing_model
 order by max(t.model_calls) desc, f.model, calls desc`
 		args = append(args, limit)
 	}
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +275,7 @@ func (r *repository) TimelineWithFilter(ctx context.Context, filter AnalyticsFil
 from usage_events %s
 group by bucket_ms
 order by bucket_ms`, bucketSize, bucketSize, where)
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -283,8 +294,8 @@ order by bucket_ms`, bucketSize, bucketSize, where)
 
 func (r *repository) HourlyDistributionWithFilter(ctx context.Context, filter AnalyticsFilter) ([]HourlyPoint, error) {
 	where, args := analyticsWhere(filter)
-	rows, err := r.db.QueryContext(ctx, `select
-	cast(strftime('%H', datetime(timestamp_ms / 1000, 'unixepoch')) as integer) as hour,
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, `select
+	`+r.hourExpr()+` as hour,
 	count(*),
 	coalesce(sum(total_tokens), 0)
 from usage_events `+where+`
@@ -308,7 +319,7 @@ order by hour`, args...)
 
 func (r *repository) ChannelModelStatsWithFilter(ctx context.Context, filter AnalyticsFilter) ([]ChannelModelStat, error) {
 	where, args := analyticsWhere(filter)
-	rows, err := r.db.QueryContext(ctx, `select
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, `select
 	coalesce(auth_index, ''),
 	coalesce(max(source), ''),
 	coalesce(max(account_snapshot), ''),
@@ -321,7 +332,7 @@ func (r *repository) ChannelModelStatsWithFilter(ctx context.Context, filter Ana
 	sum(case when failed = 1 then 1 else 0 end),
 	coalesce(sum(input_tokens), 0),
 	coalesce(sum(output_tokens), 0),
-	coalesce(sum(`+compatCachedExpr+`), 0),
+	coalesce(sum(`+r.cachedTokensExpr("")+`), 0),
 	coalesce(sum(cache_read_tokens), 0),
 	coalesce(sum(cache_creation_tokens), 0),
 	coalesce(sum(total_tokens), 0),
@@ -365,7 +376,7 @@ order by count(*) desc`, args...)
 
 func (r *repository) FailureSourcesWithFilter(ctx context.Context, filter AnalyticsFilter) ([]FailureSourceStat, error) {
 	where, args := analyticsWhere(filter)
-	rows, err := r.db.QueryContext(ctx, `select
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, `select
 	coalesce(max(source), ''),
 	coalesce(source_hash, ''),
 	coalesce(auth_index, ''),
@@ -409,7 +420,7 @@ order by sum(case when failed = 1 then 1 else 0 end) desc, max(timestamp_ms) des
 
 func (r *repository) TaskBucketsWithFilter(ctx context.Context, filter AnalyticsFilter) ([]TaskBucket, error) {
 	where, args := analyticsWhere(filter)
-	rows, err := r.db.QueryContext(ctx, `select
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, `select
 	coalesce(timestamp, '') || '|' || coalesce(source_hash, '') || '|' || coalesce(auth_index, '') as bucket_key,
 	count(*),
 	sum(case when failed = 0 then 1 else 0 end),
@@ -419,11 +430,11 @@ func (r *repository) TaskBucketsWithFilter(ctx context.Context, filter Analytics
 	coalesce(max(source), ''),
 	coalesce(source_hash, ''),
 	coalesce(auth_index, ''),
-	coalesce(group_concat(distinct model), ''),
-	coalesce(group_concat(distinct endpoint), ''),
+	`+r.distinctConcatExpr("model")+`,
+	`+r.distinctConcatExpr("endpoint")+`,
 	coalesce(sum(input_tokens), 0),
 	coalesce(sum(output_tokens), 0),
-	coalesce(sum(`+compatCachedExpr+`), 0),
+	coalesce(sum(`+r.cachedTokensExpr("")+`), 0),
 	coalesce(sum(cache_read_tokens), 0),
 	coalesce(sum(cache_creation_tokens), 0),
 	coalesce(sum(total_tokens), 0),
@@ -476,7 +487,7 @@ func (r *repository) RecentFailuresWithFilter(ctx context.Context, filter Analyt
 	filter.IncludeFailed = true
 	where, args := analyticsWhere(filter)
 	args = append(args, limit)
-	rows, err := r.db.QueryContext(ctx, `select
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, `select
 	timestamp_ms,
 	model,
 	coalesce(api_key_hash, ''),
@@ -536,7 +547,7 @@ func (r *repository) EventsPageWithFilter(ctx context.Context, filter AnalyticsF
 	}
 	where, args := analyticsWhere(filter)
 	args = append(args, queryLimit)
-	rows, err := r.db.QueryContext(ctx, `select
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, `select
 	event_hash,
 	timestamp_ms,
 	timestamp,
@@ -556,7 +567,7 @@ func (r *repository) EventsPageWithFilter(ctx context.Context, filter AnalyticsF
 	coalesce(reasoning_effort, ''),
 	input_tokens,
 	output_tokens,
-	`+compatCachedExpr+`,
+	`+r.cachedTokensExpr("")+`,
 	cache_read_tokens,
 	cache_creation_tokens,
 	reasoning_tokens,
@@ -632,7 +643,7 @@ limit ?`, args...)
 func (r *repository) ActiveDaysWithFilter(ctx context.Context, filter AnalyticsFilter) (int64, error) {
 	where, args := analyticsWhere(filter)
 	var count int64
-	if err := r.db.QueryRowContext(ctx, `select count(distinct (timestamp_ms / 86400000)) from usage_events `+where, args...).Scan(&count); err != nil {
+	if err := sqldb.QueryRowContext(ctx, r.db, r.dialect, `select count(distinct (timestamp_ms / 86400000)) from usage_events `+where, args...).Scan(&count); err != nil {
 		return 0, err
 	}
 	return count, nil
@@ -640,7 +651,7 @@ func (r *repository) ActiveDaysWithFilter(ctx context.Context, filter AnalyticsF
 
 func (r *repository) ZeroTokenModelsWithFilter(ctx context.Context, filter AnalyticsFilter) ([]string, error) {
 	where, args := analyticsWhere(filter)
-	rows, err := r.db.QueryContext(ctx, `select distinct coalesce(model, '')
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, `select distinct coalesce(model, '')
 from usage_events `+where+`
 and total_tokens = 0
 and failed = 0

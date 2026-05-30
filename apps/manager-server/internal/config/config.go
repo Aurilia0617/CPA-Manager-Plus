@@ -22,6 +22,7 @@ type Config struct {
 	HTTPAddr       string
 	DataDir        string
 	DBPath         string
+	DatabaseURL    string
 	CPAUpstreamURL string
 	ManagementKey  string
 	AdminKey       string
@@ -42,6 +43,7 @@ type fileConfig struct {
 	HTTPAddr          string   `json:"httpAddr,omitempty"`
 	DataDir           string   `json:"dataDir,omitempty"`
 	DBPath            string   `json:"dbPath,omitempty"`
+	DatabaseURL       string   `json:"databaseUrl,omitempty"`
 	CPAUpstreamURL    string   `json:"cpaUpstreamUrl,omitempty"`
 	ManagementKeyFile string   `json:"managementKeyFile,omitempty"`
 	AdminKeyFile      string   `json:"adminKeyFile,omitempty"`
@@ -100,6 +102,7 @@ func Load() (Config, error) {
 		HTTPAddr:       env("HTTP_ADDR", stringFallback(cfgFile.HTTPAddr, "0.0.0.0:18317")),
 		DataDir:        dataDir,
 		DBPath:         env("USAGE_DB_PATH", dbPathFallback),
+		DatabaseURL:    databaseURL(cfgFile.DatabaseURL),
 		CPAUpstreamURL: env("CPA_UPSTREAM_URL", cfgFile.CPAUpstreamURL),
 		ManagementKey:  readSecret("CPA_MANAGEMENT_KEY", "CPA_MANAGEMENT_KEY_FILE", managementKeyFile),
 		AdminKey:       readSecret("CPA_MANAGER_ADMIN_KEY", "CPA_MANAGER_ADMIN_KEY_FILE", adminKeyFile),
@@ -130,7 +133,7 @@ func loadFileConfig() (fileConfig, string, error) {
 	if err != nil || ok {
 		return cfg, cfgDir, err
 	}
-	if hasEnv("USAGE_DATA_DIR") || hasEnv("USAGE_DB_PATH") {
+	if hasEnv("USAGE_DATA_DIR") || hasEnv("USAGE_DB_PATH") || hasDatabaseURLEnv() {
 		return fileConfig{}, "", nil
 	}
 	return createDefaultFileConfig(configPath)
@@ -205,6 +208,23 @@ func env(key string, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func hasDatabaseURLEnv() bool {
+	return hasEnv("DATABASE_URL") || hasEnv("CPA_MANAGER_DATABASE_URL") || hasEnv("POSTGRES_DSN")
+}
+
+func databaseURL(fallback string) string {
+	if value := strings.TrimSpace(os.Getenv("DATABASE_URL")); value != "" {
+		return value
+	}
+	if value := strings.TrimSpace(os.Getenv("CPA_MANAGER_DATABASE_URL")); value != "" {
+		return value
+	}
+	if value := strings.TrimSpace(os.Getenv("POSTGRES_DSN")); value != "" {
+		return value
+	}
+	return strings.TrimSpace(fallback)
 }
 
 func envInt(key string, fallback int) int {

@@ -40,8 +40,13 @@ func (h *Handler) Status(w http.ResponseWriter, r *http.Request) {
 	}
 	status := h.App.CollectorService.Status()
 	status.DeadLetters = deadLetters
+	database := "sqlite"
+	if h.App.Config.DatabaseURL != "" {
+		database = "postgres"
+	}
 	response.JSON(w, http.StatusOK, map[string]any{
 		"service":     h.App.ServiceID,
+		"database":    database,
 		"dbPath":      h.App.Config.DBPath,
 		"events":      events,
 		"deadLetters": deadLetters,

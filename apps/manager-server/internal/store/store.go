@@ -9,7 +9,9 @@ import (
 	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/codexinspection"
 	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/deadletter"
 	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/modelprice"
+	postgresrepo "github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/postgres"
 	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/setting"
+	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/sqldb"
 	sqliterepo "github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/sqlite"
 	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/usageevent"
 	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/security"
@@ -50,7 +52,8 @@ type EventPageItem = usageevent.EventPageItem
 type EventsPage = usageevent.EventsPage
 
 type Store struct {
-	db *sql.DB
+	db      *sql.DB
+	dialect sqldb.Dialect
 
 	Settings         setting.Repository
 	UsageEvents      usageevent.Repository
@@ -60,23 +63,40 @@ type Store struct {
 	CodexInspections codexinspection.Repository
 }
 
+type OpenOptions struct {
+	SQLitePath  string
+	PostgresURL string
+}
+
 func Open(path string, protector ...*security.Protector) (*Store, error) {
-	db, err := sqliterepo.Open(path)
+	return OpenWithOptions(OpenOptions{SQLitePath: path}, protector...)
+}
+
+func OpenWithOptions(options OpenOptions, protector ...*security.Protector) (*Store, error) {
+	if options.PostgresURL != "" {
+		db, err := postgresrepo.Open(options.PostgresURL)
+		if err != nil {
+			return nil, err
+		}
+		return New(db, sqldb.DialectPostgres, protector...), nil
+	}
+	db, err := sqliterepo.Open(options.SQLitePath)
 	if err != nil {
 		return nil, err
 	}
-	return New(db, protector...), nil
+	return New(db, sqldb.DialectSQLite, protector...), nil
 }
 
-func New(db *sql.DB, protector ...*security.Protector) *Store {
+func New(db *sql.DB, dialect sqldb.Dialect, protector ...*security.Protector) *Store {
 	return &Store{
 		db:               db,
-		Settings:         setting.New(db, protector...),
-		UsageEvents:      usageevent.New(db),
-		DeadLetters:      deadletter.New(db),
-		ModelPrices:      modelprice.New(db),
-		APIKeyAliases:    apikeyalias.New(db),
-		CodexInspections: codexinspection.New(db),
+		dialect:          dialect,
+		Settings:         setting.New(db, dialect, protector...),
+		UsageEvents:      usageevent.New(db, dialect),
+		DeadLetters:      deadletter.New(db, dialect),
+		ModelPrices:      modelprice.New(db, dialect),
+		APIKeyAliases:    apikeyalias.New(db, dialect),
+		CodexInspections: codexinspection.New(db, dialect),
 	}
 }
 

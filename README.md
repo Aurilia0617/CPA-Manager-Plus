@@ -265,7 +265,7 @@ This builds the React panel and embeds it into the Go Manager Server binary.
 
 ## Manager Server Configuration
 
-Most users can configure CPA URL, CPA Management Key, request monitoring enablement, collection mode, and polling interval from **Configuration -> CPA Manager Plus Configuration**. CPA Manager Plus configuration is persisted in SQLite. Environment variables are mainly for first bootstrap and unattended deployments.
+Most users can configure CPA URL, CPA Management Key, request monitoring enablement, collection mode, and polling interval from **Configuration -> CPA Manager Plus Configuration**. CPA Manager Plus configuration is persisted in local SQLite by default; when `DATABASE_URL` is set, it uses remote PostgreSQL instead. Environment variables are mainly for first bootstrap and unattended deployments.
 
 The variables below are Manager Server runtime settings. Frontend build-time settings are separate: `VITE_DEFAULT_CPA_BASE_URL` sets the default CPA URL shown by the Manager Server-hosted first setup wizard. When it is not set, the Docker-hosted panel suggests `http://host.docker.internal:8317`.
 
@@ -273,7 +273,9 @@ The variables below are Manager Server runtime settings. Frontend build-time set
 |---|---:|---|
 | `CPA_MANAGER_CONFIG` | empty | Optional config file path. When empty, native packages use `config.json` next to the binary |
 | `HTTP_ADDR` | `0.0.0.0:18317` | Manager Server HTTP listen address |
-| `USAGE_DB_PATH` | Docker: `/data/usage.sqlite`; native: `./data/usage.sqlite` | SQLite database path |
+| `DATABASE_URL` | empty | Optional PostgreSQL connection string. When set, remote PostgreSQL is used first, for example Aiven's `postgres://...?...sslmode=require`. Deployments without stable local disk should also set a fixed `CPA_MANAGER_DATA_KEY` |
+| `CPA_MANAGER_DATABASE_URL` / `POSTGRES_DSN` | empty | Compatibility aliases for `DATABASE_URL` |
+| `USAGE_DB_PATH` | Docker: `/data/usage.sqlite`; native: `./data/usage.sqlite` | SQLite database path; only used when no remote database is configured |
 | `USAGE_DATA_DIR` | Docker: `/data`; native: `./data` | Base data directory when `USAGE_DB_PATH` is not overridden |
 | `CPA_MANAGER_ADMIN_KEY` | empty | Optional admin key; when empty, first startup generates and logs one |
 | `CPA_MANAGER_ADMIN_KEY_FILE` | `/run/secrets/cpa_admin_key` | Optional admin key file |

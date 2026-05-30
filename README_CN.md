@@ -265,7 +265,7 @@ docker compose -f docker-compose.manager.yml up --build
 
 ## Manager Server 配置项
 
-大多数用户可以直接在面板的「配置面板 -> CPA Manager Plus 配置」中配置 CPA 地址、CPA Management Key、是否启用请求监控、采集模式和轮询间隔。CPA Manager Plus 配置会保存到 SQLite；环境变量更适合首次引导和无人值守部署。
+大多数用户可以直接在面板的「配置面板 -> CPA Manager Plus 配置」中配置 CPA 地址、CPA Management Key、是否启用请求监控、采集模式和轮询间隔。CPA Manager Plus 配置默认保存到本地 SQLite；设置 `DATABASE_URL` 后会改用远程 PostgreSQL。环境变量更适合首次引导和无人值守部署。
 
 下表是 Manager Server 运行时配置。前端构建时配置是独立的：`VITE_DEFAULT_CPA_BASE_URL` 用于设置 Manager Server 托管面板首次初始化页中展示的默认 CPA 地址；未设置时，Docker 托管面板默认建议 `http://host.docker.internal:8317`。
 
@@ -273,7 +273,9 @@ docker compose -f docker-compose.manager.yml up --build
 |---|---:|---|
 | `CPA_MANAGER_CONFIG` | 空 | 可选配置文件路径；为空时原生包默认使用程序同目录的 `config.json` |
 | `HTTP_ADDR` | `0.0.0.0:18317` | Manager Server HTTP 监听地址 |
-| `USAGE_DB_PATH` | Docker：`/data/usage.sqlite`；原生包：`./data/usage.sqlite` | SQLite 数据库路径 |
+| `DATABASE_URL` | 空 | 可选 PostgreSQL 连接串；设置后优先使用远程数据库，例如 Aiven 提供的 `postgres://...?...sslmode=require`。无稳定本地磁盘的部署还应设置固定 `CPA_MANAGER_DATA_KEY` |
+| `CPA_MANAGER_DATABASE_URL` / `POSTGRES_DSN` | 空 | `DATABASE_URL` 的兼容别名 |
+| `USAGE_DB_PATH` | Docker：`/data/usage.sqlite`；原生包：`./data/usage.sqlite` | SQLite 数据库路径；仅在未设置远程数据库时使用 |
 | `USAGE_DATA_DIR` | Docker：`/data`；原生包：`./data` | 未覆盖 `USAGE_DB_PATH` 时的数据目录 |
 | `CPA_MANAGER_ADMIN_KEY` | 空 | 可选管理员密钥；为空时首次启动自动生成并输出到日志 |
 | `CPA_MANAGER_ADMIN_KEY_FILE` | `/run/secrets/cpa_admin_key` | 可选管理员密钥文件 |

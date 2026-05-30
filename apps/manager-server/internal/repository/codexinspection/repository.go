@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/model"
+	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/sqldb"
 )
 
 type Repository interface {
@@ -23,11 +24,12 @@ type Repository interface {
 }
 
 type repository struct {
-	db *sql.DB
+	db      *sql.DB
+	dialect sqldb.Dialect
 }
 
-func New(db *sql.DB) Repository {
-	return &repository{db: db}
+func New(db *sql.DB, dialect sqldb.Dialect) Repository {
+	return &repository{db: db, dialect: dialect}
 }
 
 func (r *repository) CreateRun(ctx context.Context, run model.CodexInspectionRun) (model.CodexInspectionRun, error) {
@@ -45,14 +47,13 @@ func (r *repository) CreateRun(ctx context.Context, run model.CodexInspectionRun
 	if run.SettingsJSON == "" {
 		run.SettingsJSON = model.MarshalCodexInspectionSettings(run.Settings)
 	}
-	res, err := r.db.ExecContext(
-		ctx,
-		`insert into codex_inspection_runs (
-			trigger_type, trigger_key, status, started_at_ms, finished_at_ms,
-			total_files, probe_set_count, sampled_count, disabled_count, enabled_count,
-			delete_count, disable_count, enable_count, reauth_count, keep_count, error,
-			settings_json, created_at_ms, updated_at_ms
-		) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	query := `insert into codex_inspection_runs (
+		trigger_type, trigger_key, status, started_at_ms, finished_at_ms,
+		total_files, probe_set_count, sampled_count, disabled_count, enabled_count,
+		delete_count, disable_count, enable_count, reauth_count, keep_count, error,
+		settings_json, created_at_ms, updated_at_ms
+	) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	args := []any{
 		run.TriggerType,
 		nullString(run.TriggerKey),
 		run.Status,
@@ -72,7 +73,14 @@ func (r *repository) CreateRun(ctx context.Context, run model.CodexInspectionRun
 		run.SettingsJSON,
 		run.CreatedAtMS,
 		run.UpdatedAtMS,
-	)
+	}
+	if r.dialect == sqldb.DialectPostgres {
+		if err := sqldb.QueryRowContext(ctx, r.db, r.dialect, query+` returning id`, args...).Scan(&run.ID); err != nil {
+			return model.CodexInspectionRun{}, err
+		}
+		return run, nil
+	}
+	res, err := sqldb.ExecContext(ctx, r.db, r.dialect, query, args...)
 	if err != nil {
 		return model.CodexInspectionRun{}, err
 	}
@@ -92,8 +100,10 @@ func (r *repository) UpdateRun(ctx context.Context, run model.CodexInspectionRun
 	if run.SettingsJSON == "" {
 		run.SettingsJSON = model.MarshalCodexInspectionSettings(run.Settings)
 	}
-	_, err := r.db.ExecContext(
+	_, err := sqldb.ExecContext(
 		ctx,
+		r.db,
+		r.dialect,
 		`update codex_inspection_runs set
 			status = ?,
 			finished_at_ms = ?,
@@ -144,33 +154,32 @@ func (r *repository) InsertResult(ctx context.Context, result model.CodexInspect
 	if result.IsQuota {
 		isQuota = 1
 	}
-	res, err := r.db.ExecContext(
-		ctx,
-		`insert into codex_inspection_results (
-			run_id, account_key, file_name, display_account, auth_index, account_id,
-			provider, disabled, status, state, action, action_reason, status_code,
-			used_percent, is_quota, error, action_status, executed_action, action_error,
-			created_at_ms
-		) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		on conflict(run_id, account_key) do update set
-			file_name = excluded.file_name,
-			display_account = excluded.display_account,
-			auth_index = excluded.auth_index,
-			account_id = excluded.account_id,
-			provider = excluded.provider,
-			disabled = excluded.disabled,
-			status = excluded.status,
-			state = excluded.state,
-			action = excluded.action,
-			action_reason = excluded.action_reason,
-			status_code = excluded.status_code,
-			used_percent = excluded.used_percent,
-			is_quota = excluded.is_quota,
-			error = excluded.error,
-			action_status = excluded.action_status,
-			executed_action = excluded.executed_action,
-			action_error = excluded.action_error,
-			created_at_ms = excluded.created_at_ms`,
+	query := `insert into codex_inspection_results (
+		run_id, account_key, file_name, display_account, auth_index, account_id,
+		provider, disabled, status, state, action, action_reason, status_code,
+		used_percent, is_quota, error, action_status, executed_action, action_error,
+		created_at_ms
+	) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	on conflict(run_id, account_key) do update set
+		file_name = excluded.file_name,
+		display_account = excluded.display_account,
+		auth_index = excluded.auth_index,
+		account_id = excluded.account_id,
+		provider = excluded.provider,
+		disabled = excluded.disabled,
+		status = excluded.status,
+		state = excluded.state,
+		action = excluded.action,
+		action_reason = excluded.action_reason,
+		status_code = excluded.status_code,
+		used_percent = excluded.used_percent,
+		is_quota = excluded.is_quota,
+		error = excluded.error,
+		action_status = excluded.action_status,
+		executed_action = excluded.executed_action,
+		action_error = excluded.action_error,
+		created_at_ms = excluded.created_at_ms`
+	args := []any{
 		result.RunID,
 		result.AccountKey,
 		result.FileName,
@@ -191,7 +200,14 @@ func (r *repository) InsertResult(ctx context.Context, result model.CodexInspect
 		nullString(result.ExecutedAction),
 		nullString(result.ActionError),
 		result.CreatedAtMS,
-	)
+	}
+	if r.dialect == sqldb.DialectPostgres {
+		if err := sqldb.QueryRowContext(ctx, r.db, r.dialect, query+` returning id`, args...).Scan(&result.ID); err != nil {
+			return model.CodexInspectionResult{}, err
+		}
+		return result, nil
+	}
+	res, err := sqldb.ExecContext(ctx, r.db, r.dialect, query, args...)
 	if err != nil {
 		return model.CodexInspectionResult{}, err
 	}
@@ -209,16 +225,22 @@ func (r *repository) InsertLog(ctx context.Context, entry model.CodexInspectionL
 			entry.DetailJSON = string(data)
 		}
 	}
-	res, err := r.db.ExecContext(
-		ctx,
-		`insert into codex_inspection_logs(run_id, level, message, detail_json, created_at_ms)
-		 values(?, ?, ?, ?, ?)`,
+	query := `insert into codex_inspection_logs(run_id, level, message, detail_json, created_at_ms)
+	 values(?, ?, ?, ?, ?)`
+	args := []any{
 		entry.RunID,
 		entry.Level,
 		entry.Message,
 		nullString(entry.DetailJSON),
 		entry.CreatedAtMS,
-	)
+	}
+	if r.dialect == sqldb.DialectPostgres {
+		if err := sqldb.QueryRowContext(ctx, r.db, r.dialect, query+` returning id`, args...).Scan(&entry.ID); err != nil {
+			return model.CodexInspectionLog{}, err
+		}
+		return entry, nil
+	}
+	res, err := sqldb.ExecContext(ctx, r.db, r.dialect, query, args...)
 	if err != nil {
 		return model.CodexInspectionLog{}, err
 	}
@@ -231,8 +253,10 @@ func (r *repository) ListRuns(ctx context.Context, limit int) ([]model.CodexInsp
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
-	rows, err := r.db.QueryContext(
+	rows, err := sqldb.QueryContext(
 		ctx,
+		r.db,
+		r.dialect,
 		`select
 			id, trigger_type, trigger_key, status, started_at_ms, finished_at_ms,
 			total_files, probe_set_count, sampled_count, disabled_count, enabled_count,
@@ -260,8 +284,10 @@ func (r *repository) ListRuns(ctx context.Context, limit int) ([]model.CodexInsp
 }
 
 func (r *repository) GetRun(ctx context.Context, id int64) (model.CodexInspectionRun, bool, error) {
-	row := r.db.QueryRowContext(
+	row := sqldb.QueryRowContext(
 		ctx,
+		r.db,
+		r.dialect,
 		`select
 			id, trigger_type, trigger_key, status, started_at_ms, finished_at_ms,
 			total_files, probe_set_count, sampled_count, disabled_count, enabled_count,
@@ -282,8 +308,10 @@ func (r *repository) GetRun(ctx context.Context, id int64) (model.CodexInspectio
 }
 
 func (r *repository) GetLatestRunByTrigger(ctx context.Context, triggerType, triggerKey string) (model.CodexInspectionRun, bool, error) {
-	row := r.db.QueryRowContext(
+	row := sqldb.QueryRowContext(
 		ctx,
+		r.db,
+		r.dialect,
 		`select
 			id, trigger_type, trigger_key, status, started_at_ms, finished_at_ms,
 			total_files, probe_set_count, sampled_count, disabled_count, enabled_count,
@@ -307,8 +335,10 @@ func (r *repository) GetLatestRunByTrigger(ctx context.Context, triggerType, tri
 }
 
 func (r *repository) ListResults(ctx context.Context, runID int64) ([]model.CodexInspectionResult, error) {
-	rows, err := r.db.QueryContext(
+	rows, err := sqldb.QueryContext(
 		ctx,
+		r.db,
+		r.dialect,
 		`select
 			id, run_id, account_key, file_name, display_account, auth_index, account_id,
 			provider, disabled, status, state, action, action_reason, status_code,
@@ -336,8 +366,10 @@ func (r *repository) ListResults(ctx context.Context, runID int64) ([]model.Code
 }
 
 func (r *repository) ListLogs(ctx context.Context, runID int64) ([]model.CodexInspectionLog, error) {
-	rows, err := r.db.QueryContext(
+	rows, err := sqldb.QueryContext(
 		ctx,
+		r.db,
+		r.dialect,
 		`select id, run_id, level, message, detail_json, created_at_ms
 		from codex_inspection_logs
 		where run_id = ?

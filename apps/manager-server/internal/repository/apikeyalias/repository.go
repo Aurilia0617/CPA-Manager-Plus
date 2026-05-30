@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/model"
+	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/sqldb"
 )
 
 type Repository interface {
@@ -17,17 +18,18 @@ type Repository interface {
 }
 
 type repository struct {
-	db *sql.DB
+	db      *sql.DB
+	dialect sqldb.Dialect
 }
 
-func New(db *sql.DB) Repository {
-	return &repository{db: db}
+func New(db *sql.DB, dialect sqldb.Dialect) Repository {
+	return &repository{db: db, dialect: dialect}
 }
 
 func (r *repository) LoadAll(ctx context.Context) ([]model.APIKeyAlias, error) {
-	rows, err := r.db.QueryContext(ctx, `select api_key_hash, alias, updated_at_ms
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, `select api_key_hash, alias, updated_at_ms
 		from api_key_aliases
-		order by alias collate nocase, api_key_hash`)
+		order by lower(alias), api_key_hash`)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +88,7 @@ func (r *repository) UpsertMany(ctx context.Context, aliases []model.APIKeyAlias
 		_ = tx.Rollback()
 	}()
 
-	stmt, err := tx.PrepareContext(ctx, `insert into api_key_aliases (
+	stmt, err := sqldb.PrepareContext(ctx, tx, r.dialect, `insert into api_key_aliases (
 		api_key_hash, alias, updated_at_ms
 	) values (?, ?, ?)
 	on conflict(api_key_hash) do update set
@@ -97,7 +99,7 @@ func (r *repository) UpsertMany(ctx context.Context, aliases []model.APIKeyAlias
 	}
 	defer stmt.Close()
 
-	deleteStmt, err := tx.PrepareContext(ctx, `delete from api_key_aliases where api_key_hash = ?`)
+	deleteStmt, err := sqldb.PrepareContext(ctx, tx, r.dialect, `delete from api_key_aliases where api_key_hash = ?`)
 	if err != nil {
 		return err
 	}
@@ -159,7 +161,7 @@ func (r *repository) Delete(ctx context.Context, apiKeyHash string) error {
 	if !validAPIKeyHash(hash) {
 		return errors.New("valid apiKeyHash is required")
 	}
-	_, err := r.db.ExecContext(ctx, `delete from api_key_aliases where api_key_hash = ?`, hash)
+	_, err := sqldb.ExecContext(ctx, r.db, r.dialect, `delete from api_key_aliases where api_key_hash = ?`, hash)
 	return err
 }
 

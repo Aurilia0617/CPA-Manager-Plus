@@ -33,7 +33,7 @@ func New(ctx context.Context, cfg config.Config, options Options) (*Context, err
 	if err != nil {
 		return nil, err
 	}
-	st, err := store.Open(cfg.DBPath, protector)
+	st, err := store.OpenWithOptions(store.OpenOptions{SQLitePath: cfg.DBPath, PostgresURL: cfg.DatabaseURL}, protector)
 	if err != nil {
 		return nil, err
 	}

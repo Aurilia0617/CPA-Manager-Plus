@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/seakee/cpa-manager-plus/apps/manager-server/internal/repository/sqldb"
 )
 
 type Repository interface {
@@ -12,16 +14,19 @@ type Repository interface {
 }
 
 type repository struct {
-	db *sql.DB
+	db      *sql.DB
+	dialect sqldb.Dialect
 }
 
-func New(db *sql.DB) Repository {
-	return &repository{db: db}
+func New(db *sql.DB, dialect sqldb.Dialect) Repository {
+	return &repository{db: db, dialect: dialect}
 }
 
 func (r *repository) Insert(ctx context.Context, payload string, errText string) error {
-	_, err := r.db.ExecContext(
+	_, err := sqldb.ExecContext(
 		ctx,
+		r.db,
+		r.dialect,
 		`insert into dead_letter_events(payload, error, created_at_ms) values(?, ?, ?)`,
 		payload,
 		errText,
