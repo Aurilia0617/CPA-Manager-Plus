@@ -178,6 +178,7 @@ const mainRoutes = [
   { path: '/auth-files/oauth-model-alias', element: <AuthFilesOAuthModelAliasEditPage /> },
   { path: '/oauth', element: <OAuthPage /> },
   { path: '/quota', element: <QuotaPage /> },
+  { path: '/tm-usage-stats', element: <Navigate to="/monitoring" replace /> },
   { path: '/codex-inspection', element: <CodexInspectionPage /> },
   {
     path: '/codex-inspection/server',
