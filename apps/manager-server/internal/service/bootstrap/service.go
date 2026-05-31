@@ -71,8 +71,22 @@ func Run(ctx context.Context, cfg config.Config, st *store.Store, dataKeyCreated
 }
 
 func ensureAdminCredential(ctx context.Context, cfg config.Config, st *store.Store) (bool, string, error) {
-	if _, ok, err := st.LoadAdminCredential(ctx); err != nil || ok {
+	current, ok, err := st.LoadAdminCredential(ctx)
+	if err != nil {
 		return false, "", err
+	}
+	if ok {
+		if cfg.AdminKey == "" || security.VerifyAdminKey(current, cfg.AdminKey) {
+			return false, "", nil
+		}
+		credential, err := security.NewAdminCredential(cfg.AdminKey, "env")
+		if err != nil {
+			return false, "", err
+		}
+		if err := st.SaveAdminCredential(ctx, credential); err != nil {
+			return false, "", err
+		}
+		return true, "", nil
 	}
 	adminKey := cfg.AdminKey
 	source := "env"

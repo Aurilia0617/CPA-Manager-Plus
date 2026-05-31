@@ -14,6 +14,35 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+func TestRunUpdatesExistingAdminCredentialFromEnv(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "usage.sqlite")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = st.Close()
+	})
+
+	if _, _, err := ensureAdminCredential(context.Background(), config.Config{}, st); err != nil {
+		t.Fatalf("create generated admin credential: %v", err)
+	}
+	created, generated, err := ensureAdminCredential(context.Background(), config.Config{AdminKey: "fixed-admin-key"}, st)
+	if err != nil {
+		t.Fatalf("update admin credential: %v", err)
+	}
+	if !created || generated != "" {
+		t.Fatalf("admin credential result created=%v generated=%q", created, generated)
+	}
+	credential, ok, err := st.LoadAdminCredential(context.Background())
+	if err != nil || !ok {
+		t.Fatalf("load admin credential ok=%v err=%v", ok, err)
+	}
+	if !security.VerifyAdminKey(credential, "fixed-admin-key") {
+		t.Fatal("env admin key does not verify after update")
+	}
+}
+
 func TestRunMigratesLegacySetupAndEncryptsSecrets(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "usage.sqlite")
 	legacyStore, err := store.Open(dbPath)
