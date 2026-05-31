@@ -18,6 +18,10 @@ func New(panelPath string, embedded fs.FS) *Service {
 }
 
 func (s *Service) ServeManagementHTML(w http.ResponseWriter, writeError func(http.ResponseWriter, int, error)) {
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	if s.PanelPath != "" {
 		if file, err := os.Open(s.PanelPath); err == nil {
 			defer file.Close()

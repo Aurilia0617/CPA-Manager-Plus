@@ -410,6 +410,15 @@
   opacity: 0.45;
 }
 
+.sidebar .nav-item[href*='#/tm-usage-stats'],
+.sidebar .nav-item[href*='#/usage-stats'],
+.sidebar .nav-item[href*='#usage-stats'],
+.sidebar .nav-item[href*='/tm-usage-stats'],
+.sidebar .nav-item[href*='/usage-stats'],
+.sidebar .nav-item[data-section='usage-stats'] {
+  display: none !important;
+}
+
 .nav-item {
   position: relative;
   height: 50px;

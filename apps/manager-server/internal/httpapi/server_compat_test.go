@@ -92,6 +92,9 @@ func TestServerCompatHealthInfoAndPanel(t *testing.T) {
 	if !strings.Contains(panelRR.Header().Get("Content-Type"), "text/html") {
 		t.Fatalf("panel content type = %q", panelRR.Header().Get("Content-Type"))
 	}
+	if !strings.Contains(panelRR.Header().Get("Cache-Control"), "no-store") {
+		t.Fatalf("panel cache-control = %q", panelRR.Header().Get("Cache-Control"))
+	}
 	if !strings.Contains(strings.ToLower(panelRR.Body.String()), "<html") {
 		t.Fatalf("panel body does not look like html")
 	}
