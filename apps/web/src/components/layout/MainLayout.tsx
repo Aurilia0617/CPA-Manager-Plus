@@ -17,7 +17,6 @@ import {
   IconSidebarConfig,
   IconSidebarDashboard,
   IconSidebarInspection,
-  IconSidebarLogs,
   IconSidebarMonitor,
   IconSidebarOauth,
   IconSidebarProviders,
@@ -34,7 +33,6 @@ import {
 } from '@/stores';
 import { triggerHeaderRefresh } from '@/hooks/useHeaderRefresh';
 import { usePanelFeatureAvailability } from '@/hooks/usePanelFeatureAvailability';
-import { isFileLogsAvailable } from '@/features/logs/logFeatureAvailability';
 import { LANGUAGE_LABEL_KEYS, LANGUAGE_ORDER, STORAGE_KEY_SIDEBAR } from '@/utils/constants';
 import { isSupportedLanguage } from '@/utils/language';
 import type { Theme } from '@/types';
@@ -50,7 +48,6 @@ const sidebarIcons: Record<string, ReactNode> = {
   codexInspection: <IconSidebarInspection size={SIDEBAR_ICON_SIZE} />,
   monitoring: <IconSidebarMonitor size={SIDEBAR_ICON_SIZE} />,
   config: <IconSidebarConfig size={SIDEBAR_ICON_SIZE} />,
-  logs: <IconSidebarLogs size={SIDEBAR_ICON_SIZE} />,
   system: <IconSidebarSystem size={SIDEBAR_ICON_SIZE} />,
 };
 
@@ -171,7 +168,6 @@ export function MainLayout() {
 
   const logout = useAuthStore((state) => state.logout);
 
-  const config = useConfigStore((state) => state.config);
   const fetchConfig = useConfigStore((state) => state.fetchConfig);
   const clearCache = useConfigStore((state) => state.clearCache);
   const featureAvailability = usePanelFeatureAvailability();
@@ -349,7 +345,6 @@ export function MainLayout() {
     });
   }, [fetchConfig]);
 
-  const fileLogsAvailable = isFileLogsAvailable(config);
   const operationNavItems: NavItem[] = [
     ...(featureAvailability.requestMonitoringAvailable
       ? [
@@ -359,9 +354,6 @@ export function MainLayout() {
             icon: sidebarIcons.monitoring,
           },
         ]
-      : []),
-    ...(fileLogsAvailable
-      ? [{ path: '/logs', label: t('nav.logs'), icon: sidebarIcons.logs }]
       : []),
   ];
   const navSections: NavItem[][] = [
