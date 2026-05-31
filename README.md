@@ -10,6 +10,22 @@ ghcr.io/aurilia0617/cpa-manager-plus:latest
 
 当前 Hugging Face Space 使用该镜像运行 CPA Manager Plus。
 
+## 前置 CPA 部署
+
+当前面板连接的 CPA 上游 Space 是：
+
+```text
+https://aurilia-oma-basic.hf.space
+```
+
+本地部署仓库路径：
+
+```bash
+/Users/aurilia/project/oma-basic
+```
+
+该 Space 运行 CLIProxyAPI，当前按 `linux/amd64` 镜像摘要固定到 `v7.1.32`。升级 CPA 时先更新这个仓库的 `Dockerfile`，推送后等待 Hugging Face Space 重建，再回到管理面板确认“服务端版本”。
+
 ## 架构要求
 
 Hugging Face Space 运行环境是 `linux/amd64`，在 Apple Silicon Mac 上构建时必须指定平台：
