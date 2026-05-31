@@ -651,11 +651,11 @@ func (r *repository) ActiveDaysWithFilter(ctx context.Context, filter AnalyticsF
 
 func (r *repository) ZeroTokenModelsWithFilter(ctx context.Context, filter AnalyticsFilter) ([]string, error) {
 	where, args := analyticsWhere(filter)
-	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, `select distinct coalesce(model, '')
+	rows, err := sqldb.QueryContext(ctx, r.db, r.dialect, `select distinct coalesce(model, '') as model
 from usage_events `+where+`
 and total_tokens = 0
 and failed = 0
-order by model`, args...)
+order by coalesce(model, '')`, args...)
 	if err != nil {
 		return nil, err
 	}
